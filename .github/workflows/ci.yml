@@ -21,6 +21,19 @@ jobs:
         ruff check .
         ruff format --check .
 
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.11"
+    - name: Install pyright
+      run: pip install ".[dev,extras]"
+    - name: Run pyright
+      run: pyright
+
   pytest:
     runs-on: ubuntu-latest
     strategy:

@@ -1,5 +1,8 @@
+from typing import TypedDict
+
 import numpy as np
 
+from skyllh.core.config import Config
 from skyllh.core.dataset import (
     DatasetCollection,
     DatasetOrigin,
@@ -13,11 +16,25 @@ from skyllh.i3.dataset import (
 DATASET_NAMES = ('IC40', 'IC59', 'IC79', 'IC86_I', 'IC86_II-VII')
 
 
+class _DsKwargs(TypedDict):
+    """Typed dictionary of the keyword arguments passed to each dataset
+    definition in this collection.
+    """
+
+    cfg: Config
+    version: int
+    verqualifiers: dict[str, int] | None
+    base_path: str | None
+    default_sub_path_fmt: str
+    sub_path_fmt: str | None
+    origin: DatasetOrigin
+
+
 def create_dataset_collection(
-    cfg,
-    base_path=None,
-    sub_path_fmt=None,
-):
+    cfg: Config,
+    base_path: str | None = None,
+    sub_path_fmt: str | None = None,
+) -> DatasetCollection:
     """Defines the dataset collection for IceCube's 10-year
     point-source public data, which is available at
     https://doi.org/10.7910/DVN/VKL316.
@@ -25,21 +42,21 @@ def create_dataset_collection(
 
     Parameters
     ----------
-    cfg : instance of Config
+    cfg
         The instance of Config holding the local configuration.
-    base_path : str | None
+    base_path
         The base path of the data files. The actual path of a data file is
         assumed to be of the structure <base_path>/<sub_path>/<file_name>.
         If ``None``, ``cfg['repository']['base_path']`` is used, which
         defaults to ``~/.cache/skyllh``.
-    sub_path_fmt : str | None
+    sub_path_fmt
         The sub path format of the data files of the public data sample.
         If None, use the default sub path format
         'icecube_10year_ps'.
 
     Returns
     -------
-    dsc : DatasetCollection
+    dsc
         The dataset collection containing all the seasons as individual
         I3Dataset objects.
     """
@@ -270,9 +287,8 @@ def create_dataset_collection(
     )
 
     # Define the common keyword arguments for all data sets.
-    ds_kwargs = {
+    ds_kwargs: _DsKwargs = {
         'cfg': cfg,
-        'livetime': None,
         'version': version,
         'verqualifiers': verqualifiers,
         'base_path': base_path,
@@ -580,6 +596,9 @@ def create_dataset_collection(
     )
 
     def convert_deg2rad(data):
+        """Converts the angular experimental data fields from degrees to
+        radians.
+        """
         exp = data.exp
         exp['ang_err'] = np.deg2rad(exp['ang_err'])
         exp['ra'] = np.deg2rad(exp['ra'])

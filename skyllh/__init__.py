@@ -1,5 +1,9 @@
 import logging
 import multiprocessing as mp
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from skyllh.datasets import create_datasets
 
 __all__ = [
     'create_datasets',

@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import numpy as np
 
 from skyllh.core.utils.coords import (
@@ -5,20 +7,20 @@ from skyllh.core.utils.coords import (
 )
 
 
-def get_tdm_field_func_psi(psi_floor=None):
+def get_tdm_field_func_psi(psi_floor: float | None = None) -> Callable:
     """Returns the TrialDataManager (TDM) field function for psi with an
     optional psi value floor.
 
     Parameters
     ----------
-    psi_floor : float | None
+    psi_floor
         The optional floor value for psi. This should be ``None`` for a standard
         point-source analysis that uses an analytic function for the detector's
         point-spread-function (PSF).
 
     Returns
     -------
-    tdm_field_func_psi : function
+    tdm_field_func_psi
         TrialDataManager (TDM) field function for psi.
     """
 

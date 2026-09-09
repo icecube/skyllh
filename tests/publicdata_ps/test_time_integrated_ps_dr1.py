@@ -8,6 +8,7 @@ from skyllh.analyses.i3.publicdata_ps.time_integrated_ps import create_analysis
 from skyllh.core.config import Config
 from skyllh.core.logging import setup_logging
 from skyllh.core.random import RandomStateService
+from skyllh.core.signal_generator import MultiDatasetSignalGenerator
 from skyllh.core.source_model import PointLikeSource
 from skyllh.core.timing import TimeLord
 from skyllh.datasets.i3 import PublicData_10y_ps
@@ -182,6 +183,8 @@ class AnalysisWithEnergyRangeTestCase(unittest.TestCase):
             source=cls.source,
         )
         cls.ana_direct_sig_gen.construct_signal_generator()
+        assert isinstance(cls.ana_direct_sig_gen._sig_generator, MultiDatasetSignalGenerator)
+        assert cls.ana_direct_sig_gen._sig_generator.sig_generator_list is not None
         for gen in cls.ana_direct_sig_gen._sig_generator.sig_generator_list:
             if hasattr(gen, 'energy_range'):
                 gen.energy_range = cls.ENERGY_RANGE

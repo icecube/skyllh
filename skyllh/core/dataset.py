@@ -7,7 +7,9 @@ import tarfile
 import urllib.error
 import urllib.request
 import zipfile
+from collections.abc import Callable, Sequence
 from copy import deepcopy
+from typing import Any, cast, overload
 
 import numpy as np
 
@@ -52,9 +54,7 @@ from skyllh.core.storage import (
     DataFieldRecordArray,
     create_FileLoader,
 )
-from skyllh.core.timing import (
-    TaskTimer,
-)
+from skyllh.core.timing import TaskTimer, TimeLord
 
 
 class DatasetOrigin:
@@ -64,27 +64,27 @@ class DatasetOrigin:
 
     def __init__(
         self,
-        base_path,
-        sub_path,
-        transfer_func,
-        filename=None,
-        host=None,
-        port=None,
-        username=None,
-        password=None,
-        post_transfer_func=None,
-        url=None,
+        base_path: str,
+        sub_path: str,
+        transfer_func: Callable,
+        filename: str | None = None,
+        host: str | None = None,
+        port: int | None = None,
+        username: str | None = None,
+        password: str | None = None,
+        post_transfer_func: Callable | None = None,
+        url: str | None = None,
         **kwargs,
     ):
         """Creates a new instance to define the origin of a dataset.
 
         Parameters
         ----------
-        base_path : str
+        base_path
             The dataset's base directory at the origin.
-        sub_path : str
+        sub_path
             The dataset's sub directory at the origin.
-        transfer_func : callable
+        transfer_func
             The callable object that should be used to transfer the dataset.
             This function requires the following call signature::
 
@@ -96,20 +96,20 @@ class DatasetOrigin:
             machine, ``user`` is the user name required to connect to the remote
             host, and ``password`` is the password for the user name required to
             connect to the remote host.
-        filename : str | None
+        filename
             If the origin is not a directory but a file, this specifies the
             filename. When ``url`` is set this becomes the local filename used
             when saving the downloaded file.
-        host : str | None
+        host
             The name or IP of the remote host.
-        port : int | None
+        port
             The port number to use when connecting to the remote host.
-        username : str | None
+        username
             The user name required to connect to the remote host.
-        password : str | None
+        password
             The password for the user name required to connect to the remote
             host.
-        post_transfer_func : callable | None
+        post_transfer_func
             The callable object that should be called after the dataset has been
             transferred by the ``transfer_func`` function. It can be used to
             extract an archive file.
@@ -119,7 +119,7 @@ class DatasetOrigin:
 
             where ``ds`` is an instance of ``Dataset``, and ``dst_path`` is the
             destination path.
-        url : str | None
+        url
             An optional complete download URL (e.g. an API endpoint with query
             parameters). When set, the ``transfer_func`` should use this URL
             directly instead of constructing one from ``host``, ``base_path``,
@@ -307,13 +307,13 @@ class DatasetOrigin:
 
         return s
 
-    def is_locally_available(self):
+    def is_locally_available(self) -> bool:
         """Checks if the dataset origin is available locally by checking if the
         given path exists on the local host.
 
         Returns
         -------
-        check : bool
+        check
             ``True`` if the path specified in this dataset origin is an absolute
             path and exists on the local host, ``False`` otherwise.
         """
@@ -348,6 +348,17 @@ class TemporaryTextFile:
         text,
         mode=stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH,
     ):
+        """Creates a new instance of TemporaryTextFile.
+
+        Parameters
+        ----------
+        pathfilename
+            The path and file name of the temporary text file.
+        text
+            The text that should be written into the file.
+        mode
+            The file access mode that should be set for the created file.
+        """
         self.pathfilename = pathfilename
         self.text = text
         self.mode = mode
@@ -381,23 +392,24 @@ class DatasetTransfer(
     """Base class for a dataset transfer mechanism."""
 
     def __init__(self, **kwargs):
+        """Creates a new instance of DatasetTransfer."""
         super().__init__(**kwargs)
 
     @staticmethod
     def execute_system_command(
-        cmd,
+        cmd: str,
         logger,
-        success_rcode=0,
+        success_rcode: int | None = 0,
     ):
         """Executes the given system command via a ``os.system`` call.
 
         Parameters
         ----------
-        cmd : str
+        cmd
             The system command to execute.
-        logger : instance of logging.Logger
+        logger
             The logger to use for debug messages.
-        success_rcode : int | None
+        success_rcode
             The return code that indicates success of the system command.
             If set to ``None``, no return code checking is performed.
 
@@ -413,13 +425,13 @@ class DatasetTransfer(
 
     @staticmethod
     def ensure_dst_path(
-        dst_path,
+        dst_path: str,
     ):
         """Ensures the existence of the given destination path.
 
         Parameters
         ----------
-        dst_path : str
+        dst_path
             The destination path.
         """
         if not os.path.isdir(dst_path):
@@ -429,28 +441,28 @@ class DatasetTransfer(
     @abc.abstractmethod
     def transfer(
         self,
-        origin,
-        file_list,
-        dst_base_path,
-        username=None,
-        password=None,
+        origin: 'DatasetOrigin',
+        file_list: list[str],
+        dst_base_path: str,
+        username: str | None = None,
+        password: str | None = None,
     ):
         """This method is supposed to transfer the dataset origin path to the
         given destination path.
 
         Parameters
         ----------
-        origin : instance of DatasetOrigin
+        origin
             The instance of DatasetOrigin defining the origin of the dataset.
-        file_list : list of str
+        file_list
             The list of files, relative to the origin base path, which should be
             transferred.
-        dst_base_path : str
+        dst_base_path
             The destination base path into which the dataset files will be
             transferred.
-        username : str | None
+        username
             The user name required to connect to the remote host.
-        password : str | None
+        password
             The password for the user name required to connect to the remote
             host.
 
@@ -464,34 +476,38 @@ class DatasetTransfer(
 class RSYNCDatasetTransfer(
     DatasetTransfer,
 ):
+    """This class provides a dataset transfer mechanism using the ``rsync``
+    program.
+    """
+
     def __init__(self, **kwargs):
+        """Creates a new instance of RSYNCDatasetTransfer."""
         super().__init__(**kwargs)
 
     def transfer(
         self,
         origin,
-        file_list,
-        dst_base_path,
-        username=None,
-        password=None,
+        file_list: list[str],
+        dst_base_path: str,
+        username: str | None = None,
+        password: str | None = None,
     ):
         """Transfers the given dataset to the given destination path using the
         ``rsync`` program.
 
         Parameters
         ----------
-        ds : instance of Dataset
-            The instance of Dataset containing the origin property specifying
-            the origin of the dataset.
-        file_list : list of str
+        origin
+            The instance of DatasetOrigin specifying the origin of the dataset.
+        file_list
             The list of files, relative to the origin base path, which should be
             transferred.
-        dst_base_path : str
+        dst_base_path
             The destination base path into which the dataset files will be
             transferred.
-        username : str | None
+        username
             The user name required to connect to the remote host.
-        password : str | None
+        password
             The password for the user name required to connect to the remote
             host.
         """
@@ -585,7 +601,18 @@ class RSYNCDatasetTransfer(
 class WGETDatasetTransfer(
     DatasetTransfer,
 ):
+    """This class provides a dataset transfer mechanism using the ``wget``
+    program.
+    """
+
     def __init__(self, protocol, **kwargs):
+        """Creates a new instance of WGETDatasetTransfer.
+
+        Parameters
+        ----------
+        protocol
+            The protocol to use for the transfer, e.g. ``"http"`` or ``"https"``.
+        """
         super().__init__(**kwargs)
 
         self.protocol = protocol
@@ -603,28 +630,28 @@ class WGETDatasetTransfer(
 
     def transfer(
         self,
-        origin,
-        file_list,
-        dst_base_path,
-        username=None,
-        password=None,
+        origin: 'DatasetOrigin',
+        file_list: list[str],
+        dst_base_path: str,
+        username: str | None = None,
+        password: str | None = None,
     ):
         """Transfers the given dataset to the given destination path using the
         ``wget`` program.
 
         Parameters
         ----------
-        origin : instance of DatasetOrigin
+        origin
             The instance of DatasetOrigin defining the origin of the dataset.
-        file_list : list of str
+        file_list
             The list of files relative to the origin's base path, which
             should be transferred.
-        dst_base_path : str
+        dst_base_path
             The destination base path into which the dataset will be
             transferred.
-        username : str | None
+        username
             The user name required to connect to the remote host.
-        password : str | None
+        password
             The password for the user name required to connect to the remote
             host.
         """
@@ -682,7 +709,18 @@ class WGETDatasetTransfer(
 class URLRetrieveDatasetTransfer(
     DatasetTransfer,
 ):
+    """This class provides a dataset transfer mechanism using Python's
+    :func:`urllib.request.urlretrieve` function.
+    """
+
     def __init__(self, protocol, **kwargs):
+        """Creates a new instance of URLRetrieveDatasetTransfer.
+
+        Parameters
+        ----------
+        protocol
+            The protocol to use for the transfer, e.g. ``"http"`` or ``"https"``.
+        """
         super().__init__(**kwargs)
 
         self.protocol = protocol
@@ -750,8 +788,8 @@ class URLRetrieveDatasetTransfer(
                 # Use the full URL directly; save with an explicit output path
                 # so the local filename matches origin.filename regardless of
                 # what the server sends in the URL path or Content-Disposition.
+                url = origin.url
                 output_file = os.path.join(dst_path, os.path.basename(file))
-                transfer_args = [origin.url, output_file]
             else:
                 url = f'{self.protocol}://{host}'
                 if port is not None:
@@ -759,7 +797,7 @@ class URLRetrieveDatasetTransfer(
                 if path[0:1] != '/':
                     url += '/'
                 url += path
-                transfer_args = [url, dst_pathfilename]
+                output_file = dst_pathfilename
 
             if username is not None:
                 password_mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
@@ -772,7 +810,7 @@ class URLRetrieveDatasetTransfer(
             opener.addheaders = [('User-Agent', 'Wget/1.25')]
             urllib.request.install_opener(opener)
             try:
-                urllib.request.urlretrieve(*transfer_args)
+                urllib.request.urlretrieve(url, output_file)
             except urllib.error.URLError as err:
                 if os.path.exists(dst_pathfilename):
                     os.remove(dst_pathfilename)
@@ -835,18 +873,18 @@ class Dataset(
     """
 
     @staticmethod
-    def get_combined_exp_pathfilenames(datasets):
+    def get_combined_exp_pathfilenames(datasets: 'Sequence[Dataset]') -> list:
         """Creates the combined list of exp pathfilenames of all the given
         datasets.
 
         Parameters
         ----------
-        datasets : sequence of Dataset
+        datasets
             The sequence of Dataset instances.
 
         Returns
         -------
-        exp_pathfilenames : list
+        exp_pathfilenames
             The combined list of exp pathfilenames.
         """
         if not issequenceof(datasets, Dataset):
@@ -859,18 +897,18 @@ class Dataset(
         return exp_pathfilenames
 
     @staticmethod
-    def get_combined_mc_pathfilenames(datasets):
+    def get_combined_mc_pathfilenames(datasets: 'Sequence[Dataset]') -> list:
         """Creates the combined list of mc pathfilenames of all the given
         datasets.
 
         Parameters
         ----------
-        datasets : sequence of Dataset
+        datasets
             The sequence of Dataset instances.
 
         Returns
         -------
-        mc_pathfilenames : list
+        mc_pathfilenames
             The combined list of mc pathfilenames.
         """
         if not issequenceof(datasets, Dataset):
@@ -883,38 +921,44 @@ class Dataset(
         return mc_pathfilenames
 
     @staticmethod
-    def get_combined_livetime(datasets):
+    def get_combined_livetime(datasets: 'Sequence[Dataset]') -> float:
         """Sums the live-time of all the given datasets.
 
         Parameters
         ----------
-        datasets : sequence of Dataset
+        datasets
             The sequence of Dataset instances.
 
         Returns
         -------
-        livetime : float
+        livetime
             The sum of all the individual live-times.
         """
         if not issequenceof(datasets, Dataset):
             raise TypeError('The datasets argument must be a sequence of Dataset instances!')
 
-        livetime = np.sum([ds.livetime for ds in datasets])
+        livetimes = []
+        for ds in datasets:
+            if ds.livetime is None:
+                raise ValueError(f'The livetime of dataset "{ds.name}" is not set and thus cannot be combined!')
+            livetimes.append(ds.livetime)
+
+        livetime = float(np.sum(livetimes))
 
         return livetime
 
     def __init__(
         self,
-        name,
-        exp_pathfilenames,
-        mc_pathfilenames,
-        livetime,
-        default_sub_path_fmt,
-        version,
-        verqualifiers=None,
-        base_path=None,
-        sub_path_fmt=None,
-        origin=None,
+        name: str,
+        exp_pathfilenames: str | Sequence[str] | None,
+        mc_pathfilenames: str | Sequence[str] | None,
+        livetime: float | None,
+        default_sub_path_fmt: str,
+        version: int,
+        verqualifiers: dict | None = None,
+        base_path: str | None = None,
+        sub_path_fmt: str | None = None,
+        origin: 'DatasetOrigin | None' = None,
         **kwargs,
     ):
         """Creates a new dataset object that describes a self-consistent set of
@@ -922,38 +966,38 @@ class Dataset(
 
         Parameters
         ----------
-        name : str
+        name
             The name of the dataset.
-        exp_pathfilenames : str | sequence of str | None
+        exp_pathfilenames
             The file name(s), including paths, of the experimental data file(s).
             This can be None, if a MC-only study is performed.
-        mc_pathfilenames : str | sequence of str | None
+        mc_pathfilenames
             The file name(s), including paths, of the monte-carlo data file(s).
             This can be None, if a MC-less analysis is performed.
-        livetime : float | None
+        livetime
             The integrated live-time in days of the dataset. It can be None for
             cases where the live-time is retrieved directly from the data files
             upon data loading.
-        default_sub_path_fmt : str
+        default_sub_path_fmt
             The default format of the sub path of the data set.
             This must be a string that can be formatted via the ``format``
             method of the ``str`` class.
-        version : int
+        version
             The version number of the dataset. Higher version numbers indicate
             newer datasets.
-        verqualifiers : dict | None
+        verqualifiers
             If specified, this dictionary specifies version qualifiers. These
             can be interpreted as subversions of the dataset. The format of the
             dictionary must be 'qualifier (str): version (int)'.
-        base_path : str | None
+        base_path
             The user-defined base path of the data set.
             Usually, this is the path of the location of the data directory.
             If set to ``None``, the dataset configuration's repository ``base_path``
             setting is used, which defaults to ``~/.cache/skyllh``.
-        sub_path_fmt : str | None
+        sub_path_fmt
             The user-defined format of the sub path of the data set.
             If set to ``None``, the ``default_sub_path_fmt`` will be used.
-        origin : instance of DatasetOrigin | None
+        origin
             The instance of DatasetOrigin defining the origin of the dataset,
             so the dataset can be transferred automatically to the user's
             device.
@@ -1249,18 +1293,18 @@ class Dataset(
         """
         return self._data_preparation_functions
 
-    def _gen_datafile_pathfilename_entry(self, pathfilename):
+    def _gen_datafile_pathfilename_entry(self, pathfilename: str) -> str:
         """Generates a string containing the given pathfilename and if it exists
         (FOUND) or not (NOT FOUND).
 
         Parameters
         ----------
-        pathfilename : str
+        pathfilename
             The fully qualified path and filename of the file.
 
         Returns
         -------
-        s : str
+        s
             The generated string.
         """
         if os.path.exists(pathfilename):
@@ -1297,20 +1341,20 @@ class Dataset(
 
         # Look for version qualifiers that make this dataset older than the
         # reference dataset.
-        qs1 = self._verqualifiers.keys()
-        qs2 = ds._verqualifiers.keys()
+        vq1 = self._verqualifiers
+        vq2 = ds._verqualifiers
 
         # If a qualifier of self is also specified for ds, the version number
         # of the self qualifier must be larger than the version number of the ds
         # qualifier, in order to consider self as newer dataset.
         # If a qualifier is present in self but not in ds, self is considered
         # newer.
-        for q in qs1:
-            if q in qs2 and qs1[q] <= qs2[q]:
+        for q in vq1:
+            if q in vq2 and vq1[q] <= vq2[q]:
                 return False
         # If there is a qualifier in ds but not in self, self is considered
         # older.
-        return all(q in qs1 for q in qs2)
+        return all(q in vq1 for q in vq2)
 
     def __str__(self):
         """Implementation of the pretty string representation of the Dataset
@@ -1393,20 +1437,20 @@ class Dataset(
 
     def get_abs_pathfilename_list(
         self,
-        pathfilename_list,
-    ):
+        pathfilename_list: Sequence[str],
+    ) -> list[str]:
         """Returns a list where each entry of the given pathfilename_list is
         an absolute path. Relative paths will be prefixed with the root_dir
         property of this Dataset instance.
 
         Parameters
         ----------
-        pathfilename_list : sequence of str
+        pathfilename_list
             The sequence of file names, either with relative, or absolute paths.
 
         Returns
         -------
-        abs_pathfilename_list : list of str
+        abs_pathfilename_list
             The list of file names with absolute paths.
         """
         root_dir = self.root_dir
@@ -1422,13 +1466,13 @@ class Dataset(
 
     def get_missing_files(
         self,
-    ):
+    ) -> list[str]:
         """Determines which files of the dataset are missing and returns the
         list of files.
 
         Returns
         -------
-        missing_files : list of str
+        missing_files
             The list of files that are missing. The files are relative to the
             dataset's root directory.
         """
@@ -1443,7 +1487,7 @@ class Dataset(
 
     def update_version_qualifiers(
         self,
-        verqualifiers,
+        verqualifiers: dict,
     ):
         """Updates the version qualifiers of the dataset. The update can only
         be done by increasing the version qualifier integer or by adding new
@@ -1451,7 +1495,7 @@ class Dataset(
 
         Parameters
         ----------
-        verqualifiers : dict
+        verqualifiers
             The dictionary with the new version qualifiers.
 
         Raises
@@ -1472,23 +1516,23 @@ class Dataset(
             got_new_verqualifiers = True
 
         existing_verqualifiers_incremented = False
-        for q in verqualifiers:
-            if (q in self._verqualifiers) and (verqualifiers[q] > self._verqualifiers[q]):
+        for q, value in verqualifiers.items():
+            if (q in self._verqualifiers) and (value > self._verqualifiers[q]):
                 existing_verqualifiers_incremented = True
-            self._verqualifiers[q] = verqualifiers[q]
+            self._verqualifiers[q] = value
 
         if not (got_new_verqualifiers or existing_verqualifiers_incremented):
             raise ValueError('Version qualifier values did not increment and no new version qualifiers were added!')
 
     def create_file_list(
         self,
-    ):
+    ) -> list[str]:
         """Creates the list of files that are linked to this dataset.
         The file paths are relative to the dataset's root directory.
 
         Returns
         -------
-        file_list : list of str
+        file_list
             The list of files of this dataset.
         """
         file_list = self._exp_pathfilename_list + self._mc_pathfilename_list
@@ -1500,9 +1544,9 @@ class Dataset(
 
     def make_data_available(
         self,
-        username=None,
-        password=None,
-    ):
+        username: str | None = None,
+        password: str | None = None,
+    ) -> bool:
         """Makes the data of the dataset available.
         If the root directory of the dataset does not exist locally, the dataset
         is transferred from its origin to the local host. If the origin is
@@ -1510,16 +1554,16 @@ class Dataset(
 
         Parameters
         ----------
-        username : str | None
+        username
             The user name required to connect to the remote host of the origin.
             If set to ``None``, the
-        password : str | None
+        password
             The password of the user name required to connect to the remote host
             of the origin.
 
         Returns
         -------
-        success : bool
+        success
             ``True`` if the data was made available successfully, ``False``
             otherwise.
         """
@@ -1573,6 +1617,7 @@ class Dataset(
         if self.origin.is_directory:
             file_list = [os.path.join(self.origin.sub_path, pathfilename) for pathfilename in self.create_file_list()]
         else:
+            assert self.origin.filename is not None
             file_list = [os.path.join(self.origin.sub_path, self.origin.filename)]
 
         logger.info(f'Starting transfer of dataset "{self.name}" from origin into base path "{base_path}".')
@@ -1594,13 +1639,13 @@ class Dataset(
 
     def load_data(
         self,
-        livetime=None,
-        keep_fields=None,
-        dtc_dict=None,
-        dtc_except_fields=None,
-        efficiency_mode=None,
-        tl=None,
-    ):
+        livetime: Livetime | float | None = None,
+        keep_fields: list[str] | None = None,
+        dtc_dict: dict | None = None,
+        dtc_except_fields: str | Sequence[str] | None = None,
+        efficiency_mode: str | None = None,
+        tl: TimeLord | None = None,
+    ) -> 'DatasetData':
         """Loads the data, which is described by the dataset.
 
         .. note:
@@ -1610,22 +1655,22 @@ class Dataset(
 
         Parameters
         ----------
-        livetime : instance of Livetime | float | None
+        livetime
             If not None, uses this livetime (if float, livetime in days) for the
             DatasetData instance, otherwise uses the Dataset livetime property
             value for the DatasetData instance.
-        keep_fields : list of str | None
+        keep_fields
             The list of user-defined data fields that should get loaded and kept
             in addition to the analysis required data fields.
-        dtc_dict : dict | None
+        dtc_dict
             This dictionary defines how data fields of specific data types (key)
             should get converted into other data types (value).
             This can be used to use less memory. If set to None, no data
             conversion is performed.
-        dtc_except_fields : str | sequence of str | None
+        dtc_except_fields
             The sequence of field names whose data type should not get
             converted.
-        efficiency_mode : str | None
+        efficiency_mode
             The efficiency mode the data should get loaded with. Possible values
             are:
 
@@ -1640,12 +1685,12 @@ class Dataset(
 
             The default value is ``'time'``. If set to ``None``, the default
             value will be used.
-        tl : instance of TimeLord | None
+        tl
             The TimeLord instance to use to time the data loading procedure.
 
         Returns
         -------
-        data : instance of DatasetData
+        data
             A instance of DatasetData holding the experimental and monte-carlo
             data.
         """
@@ -1690,6 +1735,7 @@ class Dataset(
                             + keep_fields,
                             self._exp_field_name_renaming_dict,
                         )
+                        or []
                     )
                 )
 
@@ -1714,25 +1760,31 @@ class Dataset(
                 # But the renaming dictionary can differ for exp and MC fields.
                 keep_fields_mc = list(
                     set(
-                        _conv_new2orig_field_names(
-                            DataFields.get_joint_names(
-                                datafields=datafields, stages=(DFS.DATAPREPARATION_EXP | DFS.ANALYSIS_EXP)
+                        (
+                            _conv_new2orig_field_names(
+                                DataFields.get_joint_names(
+                                    datafields=datafields, stages=(DFS.DATAPREPARATION_EXP | DFS.ANALYSIS_EXP)
+                                )
+                                + keep_fields,
+                                self._exp_field_name_renaming_dict,
                             )
-                            + keep_fields,
-                            self._exp_field_name_renaming_dict,
+                            or []
                         )
-                        + _conv_new2orig_field_names(
-                            DataFields.get_joint_names(
-                                datafields=datafields,
-                                stages=(
-                                    DFS.DATAPREPARATION_EXP
-                                    | DFS.ANALYSIS_EXP
-                                    | DFS.DATAPREPARATION_MC
-                                    | DFS.ANALYSIS_MC
-                                ),
+                        + (
+                            _conv_new2orig_field_names(
+                                DataFields.get_joint_names(
+                                    datafields=datafields,
+                                    stages=(
+                                        DFS.DATAPREPARATION_EXP
+                                        | DFS.ANALYSIS_EXP
+                                        | DFS.DATAPREPARATION_MC
+                                        | DFS.ANALYSIS_MC
+                                    ),
+                                )
+                                + keep_fields,
+                                self._mc_field_name_renaming_dict,
                             )
-                            + keep_fields,
-                            self._mc_field_name_renaming_dict,
+                            or []
                         )
                     )
                 )
@@ -1757,21 +1809,21 @@ class Dataset(
 
     def load_aux_data(
         self,
-        name,
-        tl=None,
+        name: str,
+        tl: TimeLord | None = None,
     ):
         """Loads the auxiliary data for the given auxiliary data definition.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the auxiliary data.
-        tl : instance of TimeLord | None
+        tl
             The TimeLord instance to use to time the data loading procedure.
 
         Returns
         -------
-        data : unspecified
+        data
             The loaded auxiliary data.
         """
         name = str_cast(name, 'The name argument must be cast-able to type str!')
@@ -1794,13 +1846,13 @@ class Dataset(
 
     def add_data_preparation(
         self,
-        func,
+        func: Callable,
     ):
         """Adds the given data preparation function to the dataset.
 
         Parameters
         ----------
-        func : callable
+        func
             The object with call signature __call__(data) that will prepare
             the data after it was loaded. The argument 'data' is a DatasetData
             instance holding the experimental and monte-carlo data. The function
@@ -1813,13 +1865,13 @@ class Dataset(
 
     def remove_data_preparation(
         self,
-        key=-1,
+        key: int | str = -1,
     ):
         """Removes a data preparation function from the dataset.
 
         Parameters
         ----------
-        key : str, int, optional
+        key
             The name or the index of the data preparation function that should
             be removed. Default value is ``-1``, i.e. the last added function.
 
@@ -1851,17 +1903,17 @@ class Dataset(
 
     def prepare_data(
         self,
-        data,
-        tl=None,
+        data: 'DatasetData',
+        tl: TimeLord | None = None,
     ):
         """Prepares the data by calling the data preparation callback functions
         of this dataset.
 
         Parameters
         ----------
-        data : instance of DatasetData
+        data
             The instance of DatasetData holding the data.
-        tl : instance of TimeLord | None
+        tl
             The instance TimeLord that should be used to time the data
             preparation.
         """
@@ -1871,13 +1923,13 @@ class Dataset(
 
     def load_and_prepare_data(
         self,
-        livetime=None,
-        keep_fields=None,
-        dtc_dict=None,
-        dtc_except_fields=None,
-        efficiency_mode=None,
-        tl=None,
-    ):
+        livetime: float | None = None,
+        keep_fields: Sequence[str] | None = None,
+        dtc_dict: dict | None = None,
+        dtc_except_fields: str | Sequence[str] | None = None,
+        efficiency_mode: str | None = None,
+        tl: TimeLord | None = None,
+    ) -> 'DatasetData':
         """Loads and prepares the experimental and monte-carlo data of this
         dataset by calling its ``load_data`` and ``prepare_data`` methods.
         After loading the data it drops all unnecessary data fields if they are
@@ -1887,22 +1939,22 @@ class Dataset(
 
         Parameters
         ----------
-        livetime : float | None
+        livetime
             The user-defined livetime in days of the data set. If not set to
             None, livetime information from the data set will get ignored and
             this value of the livetime will be used.
-        keep_fields : sequence of str | None
+        keep_fields
             The list of additional data fields that should get kept.
             By default only the required data fields are kept.
-        dtc_dict : dict | None
+        dtc_dict
             This dictionary defines how data fields of specific data types (key)
             should get converted into other data types (value).
             This can be used to use less memory. If set to None, no data
             conversion is performed.
-        dtc_except_fields : str | sequence of str | None
+        dtc_except_fields
             The sequence of field names whose data type should not get
             converted.
-        efficiency_mode : str | None
+        efficiency_mode
             The efficiency mode the data should get loaded with. Possible values
             are:
 
@@ -1917,13 +1969,13 @@ class Dataset(
 
             The default value is ``'time'``. If set to ``None``, the default
             value will be used.
-        tl : instance of TimeLord | None
+        tl
             The instance of TimeLord that should be used to time the data
             loading and preparation.
 
         Returns
         -------
-        data : instance of DatasetData
+        data
             The instance of DatasetData holding the experimental and monte-carlo
             data.
         """
@@ -1970,13 +2022,13 @@ class Dataset(
 
     def add_binning_definition(
         self,
-        binning,
+        binning: BinningDefinition,
     ):
         """Adds a binning setting to this dataset.
 
         Parameters
         ----------
-        binning : BinningDefinition
+        binning
             The BinningDefinition object holding the binning information.
         """
         if not isinstance(binning, BinningDefinition):
@@ -1988,18 +2040,18 @@ class Dataset(
 
     def get_binning_definition(
         self,
-        name,
-    ):
+        name: str,
+    ) -> BinningDefinition:
         """Gets the BinningDefinition object for the given binning name.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the binning definition.
 
         Returns
         -------
-        binning_definition : instance of BinningDefinition
+        binning_definition
             The requested instance of BinningDefinition.
         """
         if name not in self._binning_definitions:
@@ -2008,13 +2060,13 @@ class Dataset(
 
     def remove_binning_definition(
         self,
-        name,
+        name: str,
     ):
         """Removes the BinningDefinition object from the dataset.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the binning definition.
 
         """
@@ -2027,41 +2079,41 @@ class Dataset(
 
     def has_binning_definition(
         self,
-        name,
-    ):
+        name: str,
+    ) -> bool:
         """Checks if the dataset has a defined binning definition with the given
         name.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the binning definition.
 
         Returns
         -------
-        check : bool
+        check
             True if the binning definition exists, False otherwise.
         """
         return name in self._binning_definitions
 
     def define_binning(
         self,
-        name,
-        binedges,
-    ):
+        name: str,
+        binedges: np.ndarray | Sequence,
+    ) -> BinningDefinition:
         """Defines a binning for ``name``, and adds it as binning definition.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the binning setting.
-        binedges : sequence
-            The sequence of the bin edges, which should be used for this binning
+        binedges
+            The numpy array of the bin edges, which should be used for this binning
             definition.
 
         Returns
         -------
-        binning : instance of BinningDefinition
+        binning
             The instance of BinningDefinition which was created and added to
             this dataset.
         """
@@ -2069,13 +2121,13 @@ class Dataset(
         self.add_binning_definition(binning)
         return binning
 
-    def replace_binning_definition(self, binning):
+    def replace_binning_definition(self, binning: BinningDefinition):
         """Replaces an already defined binning definition of this dataset by
         the given binning definition.
 
         Parameters
         ----------
-        binning : instance of BinningDefinition
+        binning
             The instance of BinningDefinition that will replace the dataset's
             BinningDefinition instance of the same name.
         """
@@ -2088,18 +2140,18 @@ class Dataset(
 
     def add_aux_data_definition(
         self,
-        name,
-        pathfilenames,
+        name: str,
+        pathfilenames: str | Sequence[str],
     ):
         """Adds the given data files as auxiliary data definition to the
         dataset.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the auxiliary data definition. The name is used as
             identifier for the data within SkyLLH.
-        pathfilenames : str | sequence of str
+        pathfilenames
             The file name(s) (including paths) of the data file(s).
         """
         name = str_cast(
@@ -2120,13 +2172,13 @@ class Dataset(
 
     def get_aux_data_definition(
         self,
-        name,
-    ):
+        name: str,
+    ) -> list[str]:
         """Returns the auxiliary data definition from the dataset.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the auxiliary data definition.
 
         Raises
@@ -2136,7 +2188,7 @@ class Dataset(
 
         Returns
         -------
-        aux_data_definition : list of str
+        aux_data_definition
             The locations (pathfilenames) of the files defined in the auxiliary
             data as auxiliary data definition.
         """
@@ -2147,17 +2199,17 @@ class Dataset(
 
     def set_aux_data_definition(
         self,
-        name,
-        pathfilenames,
+        name: str,
+        pathfilenames: str | Sequence[str],
     ):
         """Sets the files of the auxiliary data definition, which has the given
         name.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the auxiliary data definition.
-        pathfilenames : str | sequence of str
+        pathfilenames
             The file name(s) (including paths) of the data file(s).
         """
         name = str_cast(
@@ -2182,13 +2234,13 @@ class Dataset(
 
     def remove_aux_data_definition(
         self,
-        name,
+        name: str,
     ):
         """Removes the auxiliary data definition from the dataset.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the data definition that should get removed.
         """
         if name not in self._aux_data_definitions:
@@ -2200,13 +2252,13 @@ class Dataset(
 
     def remove_aux_data_definitions(
         self,
-        names,
+        names: Sequence[str],
     ):
         """Removes the auxiliary data definition from the dataset.
 
         Parameters
         ----------
-        names : sequence of str
+        names
             The names of the data definitions that should get removed.
         """
         for name in names:
@@ -2214,16 +2266,16 @@ class Dataset(
 
     def add_aux_data(
         self,
-        name,
+        name: str,
         data,
     ):
         """Adds the given data as auxiliary data to this data set.
 
         Parameters
         ----------
-        name : str
+        name
             The name under which the auxiliary data will be stored.
-        data : unspecified
+        data
             The data that should get stored. This can be of any data type.
 
         Raises
@@ -2240,23 +2292,23 @@ class Dataset(
 
     def get_aux_data(
         self,
-        name,
-        default=None,
+        name: str,
+        default: Any = None,
     ):
         """Retrieves the auxiliary data that is stored in this data set under
         the given name.
 
         Parameters
         ----------
-        name : str
+        name
             The name under which the auxiliary data is stored.
-        default : any | None
+        default
             If not ``None``, it specifies the returned default value when the
             auxiliary data does not exists.
 
         Returns
         -------
-        data : unspecified
+        data
             The retrieved auxiliary data.
 
         Raises
@@ -2276,14 +2328,14 @@ class Dataset(
 
     def remove_aux_data(
         self,
-        name,
+        name: str,
     ):
         """Removes the auxiliary data that is stored in this data set under
         the given name.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the dataset that should get removed.
         """
         if name not in self._aux_data:
@@ -2299,14 +2351,14 @@ class DatasetCollection:
     the ``add_datasets`` method.
     """
 
-    def __init__(self, name, description=''):
+    def __init__(self, name: str, description: str = ''):
         """Creates a new DatasetCollection instance.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the collection.
-        description : str
+        description
             The (longer) description of the dataset collection.
         """
         self.name = name
@@ -2357,26 +2409,32 @@ class DatasetCollection:
         ds_name = list(self._datasets.keys())[0]  # noqa: RUF015
         return self._datasets[ds_name].verqualifiers
 
+    @overload
+    def __getitem__(self, key: str) -> 'Dataset': ...
+    @overload
+    def __getitem__(self, key: list[str]) -> 'list[Dataset]': ...
+    @overload
+    def __getitem__(self, key: tuple[str, ...]) -> 'list[Dataset]': ...
     def __getitem__(
         self,
-        key,
-    ):
+        key: str | Sequence[str],
+    ) -> 'Dataset | list[Dataset]':
         """Implementation of the access operator ``[key]``.
 
         Parameters
         ----------
-        key : str | sequence of str
+        key
             The name or names of the dataset(s) that should get retrieved from
             this dataset collection.
 
         Returns
         -------
-        datasets : instance of Dataset | list of instance of Dataset
+        datasets
             The dataset instance or the list of dataset instances corresponding
             to the given key.
         """
         if not issequence(key):
-            return self.get_dataset(key)
+            return self.get_dataset(cast(str, key))
 
         if not issequenceof(key, str):
             raise TypeError(
@@ -2413,7 +2471,7 @@ class DatasetCollection:
 
     def add_aux_data(
         self,
-        name,
+        name: str,
         data,
     ):
         """Adds the given data as auxiliary data to all datasets of this
@@ -2421,9 +2479,9 @@ class DatasetCollection:
 
         Parameters
         ----------
-        name : str
+        name
             The name under which the auxiliary data will be stored.
-        data : unspecified
+        data
             The data that should get stored. This can be of any data type.
 
         Raises
@@ -2441,26 +2499,29 @@ class DatasetCollection:
 
     def add_datasets(
         self,
-        datasets,
-    ):
+        datasets: 'Dataset | Sequence[Dataset]',
+    ) -> 'DatasetCollection':
         """Adds the given Dataset object(s) to this dataset collection.
 
         Parameters
         ----------
-        datasets : instance of Dataset | sequence of instance of Dataset
+        datasets
             The instance of Dataset or the sequence of instance of Dataset that
             should be added to the dataset collection.
 
         Returns
         -------
-        self : instance of DatasetCollection
+        self
             This instance of DatasetCollection in order to be able to chain
             several ``add_datasets`` calls.
         """
-        if not issequence(datasets):
-            datasets = [datasets]
+        _datasets: Sequence[Dataset | Sequence[Dataset]]
+        if not issequence(datasets):  # noqa SIM108
+            _datasets = [cast('Dataset', datasets)]
+        else:
+            _datasets = cast('Sequence[Dataset]', datasets)
 
-        for dataset in datasets:
+        for dataset in _datasets:
             if not isinstance(dataset, Dataset):
                 raise TypeError('The dataset object must be a sub-class of Dataset!')
 
@@ -2473,13 +2534,13 @@ class DatasetCollection:
 
     def remove_dataset(
         self,
-        name,
+        name: str,
     ):
         """Removes the given dataset from the collection.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the dataset that should get removed.
         """
         if name not in self._datasets:
@@ -2489,18 +2550,18 @@ class DatasetCollection:
 
     def get_dataset(
         self,
-        name,
-    ):
+        name: str,
+    ) -> 'Dataset':
         """Retrieves a Dataset object from this dataset collection.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the dataset.
 
         Returns
         -------
-        dataset : Dataset instance
+        dataset
             The Dataset object holding all the information about the dataset.
 
         Raises
@@ -2521,18 +2582,18 @@ class DatasetCollection:
 
     def get_datasets(
         self,
-        names,
-    ):
+        names: str | Sequence[str],
+    ) -> 'list[Dataset]':
         """Retrieves a list of Dataset objects from this dataset collection.
 
         Parameters
         ----------
-        names : str | sequence of str
+        names
             The name or sequence of names of the datasets to retrieve.
 
         Returns
         -------
-        datasets : list of Dataset instances
+        datasets
             The list of Dataset instances for the given list of data set names.
 
         Raises
@@ -2541,20 +2602,23 @@ class DatasetCollection:
             If one of the requested data sets is not present in this data set
             collection.
         """
-        if not issequence(names):
-            names = [names]
-        if not issequenceof(names, str):
+        _names: Sequence[str]
+        if not issequence(names):  # noqa SIM108
+            _names = [cast(str, names)]
+        else:
+            _names = cast(Sequence[str], names)
+        if not issequenceof(_names, str):
             raise TypeError('The names argument must be an instance of str or a sequence of str instances!')
 
         datasets = []
-        for name in names:
+        for name in _names:
             datasets.append(self.get_dataset(name))
 
         return datasets
 
     def set_exp_field_name_renaming_dict(
         self,
-        d,
+        d: dict,
     ):
         """Sets the dictionary with the data field names of the experimental
         data that needs to be renamed just after loading the data. The
@@ -2562,7 +2626,7 @@ class DatasetCollection:
 
         Parameters
         ----------
-        d : dict
+        d
             The dictionary with the old field names as keys and the new field
             names as values.
         """
@@ -2571,7 +2635,7 @@ class DatasetCollection:
 
     def set_mc_field_name_renaming_dict(
         self,
-        d,
+        d: dict,
     ):
         """Sets the dictionary with the data field names of the monte-carlo
         data that needs to be renamed just after loading the data. The
@@ -2579,7 +2643,7 @@ class DatasetCollection:
 
         Parameters
         ----------
-        d : dict
+        d
             The dictionary with the old field names as keys and the new field
             names as values.
         """
@@ -2588,17 +2652,17 @@ class DatasetCollection:
 
     def set_dataset_prop(
         self,
-        name,
-        value,
+        name: str,
+        value: object,
     ):
         """Sets the given property to the given name for all data sets of this
         data set collection.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the property.
-        value : object
+        value
             The value to set for the given property.
 
         Raises
@@ -2613,17 +2677,17 @@ class DatasetCollection:
 
     def define_binning(
         self,
-        name,
-        binedges,
+        name: str,
+        binedges: np.ndarray | Sequence,
     ):
         """Defines a binning definition and adds it to all the datasets of this
         dataset collection.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the binning definition.
-        binedges : sequence
+        binedges
             The sequence of the bin edges, that should be used for the binning.
         """
         for dataset in self._datasets.values():
@@ -2631,14 +2695,14 @@ class DatasetCollection:
 
     def add_data_preparation(
         self,
-        func,
+        func: Callable,
     ):
         """Adds the data preparation function to all the datasets of this
         dataset collection.
 
         Parameters
         ----------
-        func : callable
+        func
             The object with call signature ``__call__(data)`` that will prepare
             the data after it was loaded. The argument 'data' is the DatasetData
             instance holding the experimental and monte-carlo data.
@@ -2649,14 +2713,14 @@ class DatasetCollection:
 
     def remove_data_preparation(
         self,
-        key=-1,
+        key: int | str = -1,
     ):
         """Removes data preparation function from all the datasets of this
         dataset collection.
 
         Parameters
         ----------
-        key : str, int, optional
+        key
             The name or the index of the data preparation function that should
             be removed. Default value is ``-1``, i.e. the last added function.
 
@@ -2684,24 +2748,24 @@ class DatasetCollection:
 
     def load_data(
         self,
-        livetime=None,
-        tl=None,
-        ppbar=None,
+        livetime: float | dict[str, float] | None = None,
+        tl: TimeLord | None = None,
+        ppbar: ProgressBar | None = None,
         **kwargs,
-    ):
+    ) -> dict:
         """Loads the data of all data sets of this data set collection.
 
         Parameters
         ----------
-        livetime : float | dict of str => float | None
+        livetime
             If not None, uses this livetime (in days) as livetime for (all) the
             DatasetData instances, otherwise uses the live time from the Dataset
             instance. If a dictionary of data set names and floats is given, it
             defines the livetime for the individual data sets.
-        tl : instance of TimeLord | None
+        tl
             The instance of TimeLord that should be used to time the data load
             operation.
-        ppbar : instance of ProgressBar | None
+        ppbar
             The optional parent progress bar.
         **kwargs
             Additional keyword arguments are passed to the
@@ -2710,7 +2774,7 @@ class DatasetCollection:
 
         Returns
         -------
-        data_dict : dictionary str => instance of DatasetData
+        data_dict
             The dictionary with the DatasetData instance holding the data of
             an individual data set as value and the data set's name as key.
         """
@@ -2744,21 +2808,21 @@ class DatasetData:
 
     def __init__(
         self,
-        data_exp,
-        data_mc,
-        livetime,
+        data_exp: DataFieldRecordArray | None,
+        data_mc: DataFieldRecordArray | None,
+        livetime: 'Livetime | float | None',
         **kwargs,
     ):
         """Creates a new DatasetData instance.
 
         Parameters
         ----------
-        data_exp : instance of DataFieldRecordArray | None
+        data_exp
             The instance of DataFieldRecordArray holding the experimental data.
             This can be None for a MC-only study.
-        data_mc : instance of DataFieldRecordArray
+        data_mc
             The instance of DataFieldRecordArray holding the monte-carlo data.
-        livetime : float
+        livetime
             The integrated livetime in days of the data.
         """
         super().__init__(**kwargs)
@@ -2794,7 +2858,7 @@ class DatasetData:
         self._mc = data
 
     @property
-    def livetime(self):
+    def livetime(self) -> float | None:
         """The integrated livetime in days of the data.
         This is None, if there is no live-time provided.
         """
@@ -2817,22 +2881,26 @@ class DatasetData:
 
     @property
     def mc_field_names(self):
-        """(read-only) The list of field names present in the monte-carlo data."""
+        """(read-only) The list of field names present in the monte-carlo data.
+        This is an empty list if there is no monte-carlo data available.
+        """
+        if self._mc is None:
+            return []
         return self._mc.field_name_list
 
 
 def assert_data_format(
-    dataset,
-    data,
+    dataset: 'Dataset',
+    data: 'DatasetData',
 ):
     """Checks the format of the experimental and monte-carlo data.
 
     Parameters
     ----------
-    dataset : instance of Dataset
+    dataset
         The instance of Dataset describing the dataset and holding the local
         configuration.
-    data : instance of DatasetData
+    data
         The instance of DatasetData holding the actual experimental and
         simulation data of the data set.
 
@@ -2844,6 +2912,9 @@ def assert_data_format(
     cfg = dataset.cfg
 
     def _get_missing_keys(keys, required_keys):
+        """Returns the list of required keys that are not present in the given
+        list of keys.
+        """
         missing_keys = []
         for reqkey in required_keys:
             if reqkey not in keys:
@@ -2875,23 +2946,23 @@ def assert_data_format(
 
 
 def remove_events(
-    data_exp,
-    mjds,
-):
+    data_exp: DataFieldRecordArray,
+    mjds: float | np.ndarray,
+) -> DataFieldRecordArray:
     """Utility function to remove events having the specified MJD time stamps.
 
     Parameters
     ----------
-    data_exp : instance of DataFieldRecordArray
+    data_exp
         The instance of DataFieldRecordArray holding the experimental data
         events.
-    mjds : float | array of floats
+    mjds
         The MJD time stamps of the events, that should get removed from the
         experimental data array.
 
     Returns
     -------
-    data_exp : instance of DataFieldRecordArray
+    data_exp
         The instance of DataFieldRecordArray holding the experimental data
         events with the specified events removed.
     """
@@ -2909,21 +2980,21 @@ def remove_events(
 
 
 def generate_base_path(
-    default_base_path,
-    base_path=None,
-):
+    default_base_path: str,
+    base_path: str | None = None,
+) -> str:
     """Generates the base path. If base_path is None, default_base_path is used.
 
     Parameters
     ----------
-    default_base_path : str
+    default_base_path
         The default base path if base_path is None.
-    base_path : str | None
+    base_path
         The user-specified base path.
 
     Returns
     -------
-    base_path : str
+    base_path
         The generated base path.
     """
     if base_path is None:
@@ -2937,24 +3008,24 @@ def generate_base_path(
 
 
 def generate_sub_path(
-    sub_path_fmt,
-    version,
-    verqualifiers,
-):
+    sub_path_fmt: str,
+    version: int,
+    verqualifiers: dict,
+) -> str:
     """Generates the sub path of the dataset based on the given sub path format.
 
     Parameters
     ----------
-    sub_path_fmt : str
+    sub_path_fmt
         The format string of the sub path.
-    version : int
+    version
         The version of the dataset.
-    verqualifiers : dict
+    verqualifiers
         The dictionary holding the version qualifiers of the dataset.
 
     Returns
     -------
-    sub_path : str
+    sub_path
         The generated sub path.
     """
     fmt_dict = dict([('version', version), *verqualifiers.items()])
@@ -2964,13 +3035,13 @@ def generate_sub_path(
 
 
 def generate_data_file_root_dir(
-    default_base_path,
-    default_sub_path_fmt,
-    version,
-    verqualifiers,
-    base_path=None,
-    sub_path_fmt=None,
-):
+    default_base_path: str,
+    default_sub_path_fmt: str,
+    version: int,
+    verqualifiers: dict,
+    base_path: str | None = None,
+    sub_path_fmt: str | None = None,
+) -> str:
     """Generates the root directory of the data files based on the given base
     path and sub path format. If base_path is None, default_base_path is used.
     If sub_path_fmt is None, default_sub_path_fmt is used.
@@ -2986,22 +3057,22 @@ def generate_data_file_root_dir(
 
     Parameters
     ----------
-    default_base_path : str
+    default_base_path
         The default base path if base_path is None.
-    default_sub_path_fmt : str
+    default_sub_path_fmt
         The default sub path format if sub_path_fmt is None.
-    version : int
+    version
         The version of the data sample.
-    verqualifiers : dict
+    verqualifiers
         The dictionary holding the version qualifiers of the data sample.
-    base_path : str | None
+    base_path
         The user-specified base path.
-    sub_path_fmt : str | None
+    sub_path_fmt
         The user-specified sub path format.
 
     Returns
     -------
-    root_dir : str
+    root_dir
         The generated root directory of the data files. This will have no
         trailing directory separator.
     """
@@ -3022,31 +3093,31 @@ def generate_data_file_root_dir(
 
 
 def get_data_subset(
-    data,
-    livetime,
-    t_start,
+    data: 'DatasetData',
+    livetime: Livetime,
+    t_start: float,
     t_stop,
-):
+) -> 'tuple[DatasetData, Livetime]':
     """Gets instance of DatasetData and instance of Livetime with data subsets
     between the given time range from ``t_start`` to ``t_stop``.
 
     Parameters
     ----------
-    data : DatasetData
+    data
         The DatasetData object.
-    livetime : Livetime
+    livetime
         The Livetime object.
-    t_start : float
+    t_start
         The MJD start time of the time range to consider.
-    t_stop : float
+    t_stop
         The MJD stop time of the time range to consider.
 
     Returns
     -------
-    data_subset : instance of DatasetData
+    data_subset
         The instance of DatasetData with subset of the data between the given
         time range from ``t_start`` to ``t_stop``.
-    livetime_subset : instance of Livetime
+    livetime_subset
         The instance of Livetime for a subset of the data between the given
         time range from ``t_start`` to ``t_stop``.
     """
@@ -3054,6 +3125,8 @@ def get_data_subset(
         raise TypeError('The "data" argument must be of type DatasetData!')
     if not isinstance(livetime, Livetime):
         raise TypeError('The "livetime" argument must be of type Livetime!')
+    assert data.exp is not None
+    assert data.mc is not None
 
     exp_slice = np.logical_and(data.exp['time'] >= t_start, data.exp['time'] < t_stop)
     mc_slice = np.logical_and(data.mc['time'] >= t_start, data.mc['time'] < t_stop)

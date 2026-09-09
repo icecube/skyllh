@@ -24,19 +24,19 @@ class ANSIColors:
     UNDERLINE = '\033[4m'
 
 
-def add_leading_text_line_padding(padwidth, text):
+def add_leading_text_line_padding(padwidth: int, text: str) -> str:
     """Adds leading white spaces to all the lines of the given text.
 
     Parameters
     ----------
-    padwidth : int
+    padwidth
         The width of the padding.
-    text : str
+    text
         The text with new line characters for each line.
 
     Returns
     -------
-    padded_text : str
+    padded_text
         The text where each line is padded with the given number of whitespaces.
     """
     return '\n'.join([' ' * padwidth + line for line in text.split('\n')])

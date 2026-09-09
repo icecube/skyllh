@@ -22,23 +22,23 @@ def disable_interactive_session():
     IS_INTERACTIVE_SESSION = False
 
 
-def is_interactive_session():
+def is_interactive_session() -> bool:
     """Checks whether the current session is interactive (True) or not (False).
 
     Returns
     -------
-    check : bool
+    check
         True if the current SkyLLH session is interactive, False otherwise.
     """
     return IS_INTERACTIVE_SESSION
 
 
-def is_python_interpreter_in_interactive_mode():
+def is_python_interpreter_in_interactive_mode() -> bool:
     """Checks if the Python interpreter is in interactive mode.
 
     Returns
     -------
-    check : bool
+    check
         True if the Python interpreter is in interactive mode, False otherwise.
     """
     return bool(getattr(sys, 'ps1', sys.flags.interactive))

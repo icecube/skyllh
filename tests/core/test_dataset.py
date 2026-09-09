@@ -83,6 +83,7 @@ class TestWGETDatasetTransfer(unittest.TestCase):
         )
 
     def test_transfer(self):
+        assert self.ds.origin is not None
         password = os.environ.get('ICECUBE_PASSWORD', None)
         if password is None:
             self.skipTest(f'No password for username "{self.ds.origin.username}" provided via the environment!')
@@ -120,6 +121,7 @@ class TestURLRetrieveDatasetTransfer(
         )
 
     def test_transfer(self):
+        assert self.ds.origin is not None
         password = os.environ.get('ICECUBE_PASSWORD', None)
         if password is None:
             self.skipTest(f'No password for username "{self.ds.origin.username}" provided via the environment!')
@@ -152,6 +154,8 @@ class TestDatasetFunctions(
         livetime_data = Livetime(self.livetime_datafile)
         (dataset_data_subset, livetime_subset) = get_data_subset(dataset_data, livetime_data, t_start, t_end)
 
+        assert dataset_data_subset.exp is not None
+        assert dataset_data_subset.mc is not None
         self.assertEqual(len(dataset_data_subset.exp), 4)
         self.assertEqual(len(dataset_data_subset.mc), 4)
         self.assertAlmostEqual(livetime_subset.livetime, 1)
@@ -163,6 +167,8 @@ class TestDatasetFunctions(
         livetime_data = Livetime(self.livetime_datafile)
         (dataset_data_subset, livetime_subset) = get_data_subset(dataset_data, livetime_data, t_start, t_end)
 
+        assert dataset_data_subset.exp is not None
+        assert dataset_data_subset.mc is not None
         self.assertEqual(len(dataset_data_subset.exp), 2)
         self.assertEqual(len(dataset_data_subset.mc), 2)
         self.assertAlmostEqual(livetime_subset.livetime, 0.5)
@@ -172,6 +178,8 @@ class TestDatasetFunctions(
         t_end = 58444.75
         (dataset_data_subset, livetime_subset) = get_data_subset(dataset_data, livetime_data, t_start, t_end)
 
+        assert dataset_data_subset.exp is not None
+        assert dataset_data_subset.mc is not None
         self.assertEqual(len(dataset_data_subset.exp), 3)
         self.assertEqual(len(dataset_data_subset.mc), 3)
         self.assertAlmostEqual(livetime_subset.livetime, 0.9)
@@ -181,6 +189,8 @@ class TestDatasetFunctions(
         t_end = 58444.6
         (dataset_data_subset, livetime_subset) = get_data_subset(dataset_data, livetime_data, t_start, t_end)
 
+        assert dataset_data_subset.exp is not None
+        assert dataset_data_subset.mc is not None
         self.assertEqual(len(dataset_data_subset.exp), 4)
         self.assertEqual(len(dataset_data_subset.mc), 4)
         self.assertAlmostEqual(livetime_subset.livetime, 0.85)
@@ -190,6 +200,8 @@ class TestDatasetFunctions(
         t_end = 58444.6
         (dataset_data_subset, livetime_subset) = get_data_subset(dataset_data, livetime_data, t_start, t_end)
 
+        assert dataset_data_subset.exp is not None
+        assert dataset_data_subset.mc is not None
         self.assertEqual(len(dataset_data_subset.exp), 3)
         self.assertEqual(len(dataset_data_subset.mc), 3)
         self.assertAlmostEqual(livetime_subset.livetime, 0.75)

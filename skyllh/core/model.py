@@ -1,5 +1,7 @@
 """This module defines the base class for any model class used in SkyLLH."""
 
+from collections.abc import Sequence
+
 from skyllh.core.py import (
     NamedObjectCollection,
     issequenceof,
@@ -13,19 +15,19 @@ class Model:
     Models could be for instance source models or background models.
     """
 
-    def __init__(self, name=None, **kwargs):
+    def __init__(self, name: str | None = None, **kwargs):
         """Creates a new Model instance.
 
         Parameters
         ----------
-        name : str | None
+        name
             The name of the model. If set to `None`, the id of the object is
             taken as name.
         """
         super().__init__(**kwargs)
 
         if name is None:
-            name = self.id
+            name = str(self.id)
 
         self.name = name
 
@@ -54,17 +56,18 @@ class ModelCollection(NamedObjectCollection):
     """
 
     @staticmethod
-    def cast(obj, errmsg=None, **kwargs):
+    def cast(
+        obj: 'Model | ModelCollection | Sequence[Model] | None', errmsg: str | None = None, **kwargs
+    ) -> 'ModelCollection':
         """Casts the given object to a ModelCollection object.
         If the cast fails, a TypeError with the given error message is raised.
 
         Parameters
         ----------
-        obj : Model instance | sequence of Model instances |
-                ModelCollection | None
+        obj
             The object that should be casted to ModelCollection.
             If set to None, an empty ModelCollection is created.
-        errmsg : str | None
+        errmsg
             The error message if the cast fails.
             If set to None, a generic error message will be used.
 
@@ -80,7 +83,7 @@ class ModelCollection(NamedObjectCollection):
 
         Returns
         -------
-        model_collection : instance of ModelCollection
+        model_collection
             The created ModelCollection instance. If `obj` is already a
             ModelCollection instance, it will be returned.
         """
@@ -100,15 +103,15 @@ class ModelCollection(NamedObjectCollection):
             errmsg = f'Cast of object "{obj!s}" of type "{typename(type(obj))}" to ModelCollection failed!'
         raise TypeError(errmsg)
 
-    def __init__(self, models=None, model_type=None, **kwargs):
+    def __init__(self, models=None, model_type: type | None = None, **kwargs):
         """Creates a new Model collection. The type of the model instances this
         collection holds can be restricted, by setting the model_type argument.
 
         Parameters
         ----------
-        models : sequence of model_type instances | None
+        models
             The sequence of models this collection should be initalized with.
-        model_type : type | None
+        model_type
             The type of the model. It must be a subclass of class ``Model``.
             If set to None (default), Model will be used.
         """
@@ -135,12 +138,12 @@ class DetectorModel(Model):
     in combination with the ParameterModelMapper class.
     """
 
-    def __init__(self, name, **kwargs):
+    def __init__(self, name: str, **kwargs):
         """Creates a new DetectorModel instance.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the detector model.
         """
         super().__init__(name=name, **kwargs)

@@ -4,6 +4,7 @@ a function.
 """
 
 import abc
+from collections.abc import Callable, Sequence
 
 import numpy as np
 import scipy.optimize
@@ -20,6 +21,7 @@ from skyllh.core.parameters import (
 from skyllh.core.py import (
     classname,
 )
+from skyllh.core.random import RandomStateService
 
 logger = get_logger(__name__)
 
@@ -33,35 +35,36 @@ class MinimizerImpl(
     """
 
     def __init__(self, **kwargs):
+        """Creates a new instance of MinimizerImpl."""
         super().__init__(**kwargs)
 
     @abc.abstractmethod
     def minimize(
         self,
-        initials,
-        bounds,
-        func,
-        func_args=None,
+        initials: np.ndarray,
+        bounds: np.ndarray,
+        func: Callable,
+        func_args: Sequence | None = None,
         **kwargs,
-    ):
+    ) -> tuple[np.ndarray, float, dict]:
         """This method is supposed to minimize the given function with the given
         initials.
 
         Parameters
         ----------
-        initials : 1D (N_fitparams)-shaped numpy ndarray
+        initials
             The ndarray holding the initial values of all the fit parameters.
-        bounds : 2D (N_fitparams,2)-shaped numpy ndarray
+        bounds
             The ndarray holding the boundary values (vmin, vmax) of the fit
             parameters.
-        func : callable
+        func
             The function that should get minimized.
             The call signature must be
 
                 ``__call__(x, *args)``
 
             The return value of ``func`` is minimizer implementation dependent.
-        func_args : sequence | None
+        func_args
             Optional sequence of arguments for ``func``.
 
         Additional Keyword Arguments
@@ -71,65 +74,65 @@ class MinimizerImpl(
 
         Returns
         -------
-        xmin : 1D ndarray
+        xmin
             The array containing the function parameter values at the function's
             minimum.
-        fmin : float
+        fmin
             The function value at its minimum.
-        status : dict
+        status
             The status dictionary with information about the minimization
             process.
         """
 
     @abc.abstractmethod
-    def get_niter(self, status):
+    def get_niter(self, status: dict) -> int:
         """This method is supposed to return the number of iterations that were
         required to find the minimum.
 
         Parameters
         ----------
-        status : dict
+        status
             The dictionary with the status information about the last
             minimization process.
 
         Returns
         -------
-        niter : int
+        niter
             The number of iterations needed to find the minimum.
         """
 
     @abc.abstractmethod
-    def has_converged(self, status):
+    def has_converged(self, status: dict) -> bool:
         """This method is supposed to analyze the status information dictionary
         if the last minimization process has converged.
 
         Parameters
         ----------
-        status : dict
+        status
             The dictionary with the status information about the last
             minimization process.
 
         Returns
         -------
-        converged : bool
+        converged
             The flag if the minimization has converged (True), or not (False).
         """
 
     @abc.abstractmethod
-    def is_repeatable(self, status):
+    def is_repeatable(self, status: dict) -> bool:
         """This method is supposed to analyze the status information dictionary
         if the last minimization process can be repeated to obtain a better
         minimum.
 
         Parameters
         ----------
-        status : dict
+        status
             The dictionary with the status information about the last
             minimization process.
 
         Returns
         -------
-        repeatable : bool
+        repeatable
             The flag if the minimization process can be repeated to obtain a
             better minimum.
         """
@@ -147,7 +150,7 @@ class ScipyMinimizerImpl(MinimizerImpl):
 
         Parameters
         ----------
-        method : str
+        method
             The minimizer method to use. See the documentation for the method
             argument of the :func:`scipy.optimize.minimize` function for
             possible values.
@@ -158,23 +161,23 @@ class ScipyMinimizerImpl(MinimizerImpl):
 
     def minimize(
         self,
-        initials,
-        bounds,
-        func,
-        func_args=None,
+        initials: np.ndarray,
+        bounds: np.ndarray | None,
+        func: Callable,
+        func_args: Sequence | None = None,
         **kwargs,
-    ):
+    ) -> tuple[np.ndarray, float, dict]:
         """Minimizes the given function ``func`` with the given initial function
         argument values ``initials``.
 
         Parameters
         ----------
-        initials : 1D numpy ndarray
+        initials
             The ndarray holding the initial values of all the fit parameters.
-        bounds : 2D (N_fitparams,2)-shaped numpy ndarray
+        bounds
             The ndarray holding the boundary values (vmin, vmax) of the fit
             parameters.
-        func : callable
+        func
             The function that should get minimized.
             The call signature must be
 
@@ -185,7 +188,7 @@ class ScipyMinimizerImpl(MinimizerImpl):
             the function gradient for each fit parameter, if the
             ``func_provides_grads`` keyword argument option is set to True.
             If set to False, ``func`` must return only the function value.
-        func_args : sequence | None
+        func_args
             Optional sequence of arguments for ``func``.
 
         Additional Keyword Arguments
@@ -204,12 +207,12 @@ class ScipyMinimizerImpl(MinimizerImpl):
 
         Returns
         -------
-        xmin : instance of numpy.ndarray
+        xmin
             The 1D array containing the function arguments at the function's
             minimum.
-        fmin : float
+        fmin
             The function value at its minimum.
-        res : instance of scipy.optimize.OptimizeResult
+        res
             The scipy OptimizeResult.
         """
 
@@ -224,14 +227,14 @@ class ScipyMinimizerImpl(MinimizerImpl):
         elif self._method == 'COBYLA':
             # COBYLA doesn't allow for bounds, but we can convert bounds
             # to a linear constraint
-
-            constraints = []
-            for bound_num, bound in enumerate(bounds):
-                lower, upper = bound
-                lc = {'type': 'ineq', 'fun': lambda x, lb=lower, i=bound_num: x[i] - lb}
-                uc = {'type': 'ineq', 'fun': lambda x, ub=upper, i=bound_num: ub - x[i]}
-                constraints.append(lc)
-                constraints.append(uc)
+            if bounds is not None:
+                constraints = []
+                for bound_num, bound in enumerate(bounds):
+                    lower, upper = bound
+                    lc = {'type': 'ineq', 'fun': lambda x, lb=lower, i=bound_num: x[i] - lb}
+                    uc = {'type': 'ineq', 'fun': lambda x, ub=upper, i=bound_num: ub - x[i]}
+                    constraints.append(lc)
+                    constraints.append(uc)
             bounds = None
 
         if (bounds is not None) and (not method_supports_bounds):
@@ -253,41 +256,41 @@ class ScipyMinimizerImpl(MinimizerImpl):
 
         return (res.x, res.fun, res)
 
-    def get_niter(self, status):
+    def get_niter(self, status: dict) -> int:
         """Returns the number of iterations needed to find the minimum.
 
         Parameters
         ----------
-        status : dict
+        status
             The dictionary with the status information about the minimization
             process.
 
         Returns
         -------
-        niter : int
+        niter
             The number of iterations needed to find the minimum.
         """
         return status['nit']
 
-    def has_converged(self, status):
+    def has_converged(self, status: dict) -> bool:
         """Analyzes the status information dictionary if the minimization
         process has converged. By definition the minimization process has
         converged if ``status['warnflag']`` equals 0.
 
         Parameters
         ----------
-        status : dict
+        status
             The dictionary with the status information about the minimization
             process.
 
         Returns
         -------
-        converged : bool
+        converged
             The flag if the minimization has converged (True), or not (False).
         """
         return bool(status['success'])
 
-    def is_repeatable(self, status):
+    def is_repeatable(self, status: dict) -> bool:
         """Checks if the minimization process can be repeated to get a better
         result.
 
@@ -296,13 +299,13 @@ class ScipyMinimizerImpl(MinimizerImpl):
 
         Parameters
         ----------
-        status : dict
+        status
             The dictionary with the status information about the last
             minimization process.
 
         Returns
         -------
-        repeatable : bool
+        repeatable
             The flag if the minimization process can be repeated to obtain a
             better minimum.
         """
@@ -316,9 +319,9 @@ class LBFGSMinimizerImpl(MinimizerImpl):
 
     def __init__(
         self,
-        ftol=1e-6,
-        pgtol=1e-5,
-        maxls=100,
+        ftol: float = 1e-6,
+        pgtol: float = 1e-5,
+        maxls: int = 100,
         **kwargs,
     ):
         """Creates a new L-BGF-S minimizer instance to minimize the given
@@ -326,11 +329,11 @@ class LBFGSMinimizerImpl(MinimizerImpl):
 
         Parameters
         ----------
-        ftol : float
+        ftol
             The function value tolerance.
-        pgtol : float
+        pgtol
             The gradient value tolerance.
-        maxls : int
+        maxls
             The maximum number of line search steps for an iteration.
         """
         super().__init__(**kwargs)
@@ -343,23 +346,23 @@ class LBFGSMinimizerImpl(MinimizerImpl):
 
     def minimize(
         self,
-        initials,
-        bounds,
-        func,
-        func_args=None,
+        initials: np.ndarray,
+        bounds: np.ndarray,
+        func: Callable,
+        func_args: Sequence | None = None,
         **kwargs,
-    ):
+    ) -> tuple[np.ndarray, float, dict]:
         """Minimizes the given function ``func`` with the given initial function
         argument values ``initials``.
 
         Parameters
         ----------
-        initials : 1D numpy ndarray
+        initials
             The ndarray holding the initial values of all the fit parameters.
-        bounds : 2D (N_fitparams,2)-shaped numpy ndarray
+        bounds
             The ndarray holding the boundary values (vmin, vmax) of the fit
             parameters.
-        func : callable
+        func
             The function that should get minimized.
             The call signature must be
 
@@ -370,7 +373,7 @@ class LBFGSMinimizerImpl(MinimizerImpl):
             the function gradient for each fit parameter, if the
             ``func_provides_grads`` keyword argument option is set to True.
             If set to False, ``func`` must return only the function value.
-        func_args : sequence | None
+        func_args
             Optional sequence of arguments for ``func``.
 
         Additional Keyword Arguments
@@ -388,22 +391,22 @@ class LBFGSMinimizerImpl(MinimizerImpl):
 
         Returns
         -------
-        xmin : 1D ndarray
+        xmin
             The array containing the function arguments at the function's
             minimum.
-        fmin : float
+        fmin
             The function value at its minimum.
-        status : dict
+        status
             The status dictionary with information about the minimization
             process. The following information are provided:
 
-            niter : int
+            niter
                 The number of iterations needed to find the minimum.
-            warnflag : int
+            warnflag
                 The warning flag indicating if the minimization did converge.
                 The possible values are:
 
-                    0: The minimization converged.
+                    0
         """
         if func_args is None:
             func_args = ()
@@ -430,48 +433,48 @@ class LBFGSMinimizerImpl(MinimizerImpl):
 
     def get_niter(
         self,
-        status,
-    ):
+        status: dict,
+    ) -> int:
         """Returns the number of iterations needed to find the minimum.
 
         Parameters
         ----------
-        status : dict
+        status
             The dictionary with the status information about the minimization
             process.
 
         Returns
         -------
-        niter : int
+        niter
             The number of iterations needed to find the minimum.
         """
         return status['nit']
 
     def has_converged(
         self,
-        status,
-    ):
+        status: dict,
+    ) -> bool:
         """Analyzes the status information dictionary if the minimization
         process has converged. By definition the minimization process has
         converged if ``status['warnflag']`` equals 0.
 
         Parameters
         ----------
-        status : dict
+        status
             The dictionary with the status information about the minimization
             process.
 
         Returns
         -------
-        converged : bool
+        converged
             The flag if the minimization has converged (True), or not (False).
         """
         return status['warnflag'] == 0
 
     def is_repeatable(
         self,
-        status,
-    ):
+        status: dict,
+    ) -> bool:
         """Checks if the minimization process can be repeated to get a better
         result. It's repeatable if
 
@@ -479,13 +482,13 @@ class LBFGSMinimizerImpl(MinimizerImpl):
 
         Parameters
         ----------
-        status : dict
+        status
             The dictionary with the status information about the last
             minimization process.
 
         Returns
         -------
-        repeatable : bool
+        repeatable
             The flag if the minimization process can be repeated to obtain a
             better minimum.
         """
@@ -509,8 +512,8 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
 
     def __init__(
         self,
-        ns_tol=1e-3,
-        max_steps=100,
+        ns_tol: float = 1e-3,
+        max_steps: int = 100,
         **kwargs,
     ):
         """Creates a new NRNs minimizer instance to minimize the given
@@ -518,9 +521,9 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
 
         Parameters
         ----------
-        ns_tol : float
+        ns_tol
             The tolerance / precision for the ns parameter value.
-        max_steps : int
+        max_steps
             The maximum number of NR steps. If max_step is reached,
             the fit is considered NOT converged.
         """
@@ -531,12 +534,12 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
 
     def minimize(
         self,
-        initials,
-        bounds,
-        func,
-        func_args=None,
+        initials: np.ndarray,
+        bounds: np.ndarray,
+        func: Callable,
+        func_args: Sequence | None = None,
         **kwargs,
-    ):
+    ) -> tuple[np.ndarray, float, dict]:
         """Minimizes the given function ``func`` with the given initial function
         argument values ``initials``. This minimizer implementation will only
         vary the first parameter. All other parameters will be set to their
@@ -544,12 +547,12 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
 
         Parameters
         ----------
-        initials : 1D numpy ndarray
+        initials
             The ndarray holding the initial values of all the fit parameters.
-        bounds : 2D (N_fitparams,2)-shaped numpy ndarray
+        bounds
             The ndarray holding the boundary values (vmin, vmax) of the fit
             parameters.
-        func : callable
+        func
             The function that should get minimized.
             The call signature must be
 
@@ -559,7 +562,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
             function value at the function arguments ``x``, the value of the
             function first derivative for the one fit parameter, and the value
             of the second derivative for the one fit parameter.
-        func_args : sequence | None
+        func_args
             Optional sequence of arguments for ``func``.
 
         Additional Keyword Arguments
@@ -569,20 +572,20 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
 
         Returns
         -------
-        xmin : 1D ndarray
+        xmin
             The array containing the function parameter values at the function's
             minimum.
-        fmin : float
+        fmin
             The function value at its minimum.
-        status : dict
+        status
             The status dictionary with information about the minimization
             process. The following information are provided:
 
-            niter : int
+            niter
                 The number of iterations needed to find the minimum.
-            last_nr_step : float
+            last_nr_step
                 The Newton-Raphson step size of the last iteration.
-            warnflag : int
+            warnflag
                 The warning flag indicating if the minimization did converge.
                 The possible values are:
 
@@ -590,12 +593,12 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
                         parameter value. Convergence forced at upper bound.
                     -2: The function minimum is below the lower bound of the
                         parameter value. Convergence forced at lower bound.
-                    0: The minimization converged with a iteration step size
+                    0
                        smaller than the specified precision.
-                    1: The minimization did NOT converge within self.max_steps
+                    1
                        number of steps
 
-            warnreason: str
+            warnreason
                 The description for the set warn flag.
 
         """
@@ -682,44 +685,45 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
 
         status['niter'] = niter
         status['last_nr_step'] = step
+        assert f is not None
         return (x, f, status)
 
     def get_niter(
         self,
-        status,
-    ):
+        status: dict,
+    ) -> int:
         """Returns the number of iterations needed to find the minimum.
 
         Parameters
         ----------
-        status : dict
+        status
             The dictionary with the status information about the minimization
             process.
 
         Returns
         -------
-        niter : int
+        niter
             The number of iterations needed to find the minimum.
         """
         return status['niter']
 
     def has_converged(
         self,
-        status,
-    ):
+        status: dict,
+    ) -> bool:
         """Analyzes the status information dictionary if the minimization
         process has converged. By definition the minimization process has
         converged if ``status['warnflag']`` is smaller or equal to 0.
 
         Parameters
         ----------
-        status : dict
+        status
             The dictionary with the status information about the minimization
             process.
 
         Returns
         -------
-        converged : bool
+        converged
             The flag if the minimization has converged (True), or not (False).
         """
         return status['warnflag'] <= 0
@@ -740,18 +744,18 @@ class NRNsScan2dMinimizerImpl(NR1dNsMinimizerImpl):
 
     def __init__(
         self,
-        p2_scan_step,
-        ns_tol=1e-3,
+        p2_scan_step: float,
+        ns_tol: float = 1e-3,
         **kwargs,
     ):
         """Creates a new minimizer implementation instance.
 
         Parameters
         ----------
-        p2_scan_step : float
+        p2_scan_step
             The step size for the scan of the second parameter of the function
             to minimize.
-        ns_tol : float
+        ns_tol
             The tolerance / precision for the ns parameter value.
         """
         super().__init__(ns_tol=ns_tol, **kwargs)
@@ -760,12 +764,12 @@ class NRNsScan2dMinimizerImpl(NR1dNsMinimizerImpl):
 
     def minimize(
         self,
-        initials,
-        bounds,
-        func,
-        func_args=None,
+        initials: np.ndarray,
+        bounds: np.ndarray,
+        func: Callable,
+        func_args: Sequence | None = None,
         **kwargs,
-    ):
+    ) -> tuple[np.ndarray, float, dict]:
         """Minimizes the given function ``func`` with the given initial function
         argument values ``initials``. This minimizer implementation will only
         vary the first two parameters. The first parameter is the number of
@@ -775,12 +779,12 @@ class NRNsScan2dMinimizerImpl(NR1dNsMinimizerImpl):
 
         Parameters
         ----------
-        initials : 1D numpy ndarray
+        initials
             The ndarray holding the initial values of all the fit parameters.
-        bounds : 2D (N_fitparams,2)-shaped numpy ndarray
+        bounds
             The ndarray holding the boundary values (vmin, vmax) of the fit
             parameters.
-        func : callable
+        func
             The function that should get minimized.
             The call signature must be
 
@@ -790,7 +794,7 @@ class NRNsScan2dMinimizerImpl(NR1dNsMinimizerImpl):
             function value at the function arguments ``x``, the value of the
             function first derivative for the first fit parameter, and the value
             of the second derivative for the first fit parameter.
-        func_args : sequence | None
+        func_args
             Optional sequence of arguments for ``func``.
 
         Additional Keyword Arguments
@@ -800,34 +804,34 @@ class NRNsScan2dMinimizerImpl(NR1dNsMinimizerImpl):
 
         Returns
         -------
-        xmin : 1D ndarray
+        xmin
             The array containing the function parameter values at the function's
             minimum.
-        fmin : float
+        fmin
             The function value at its minimum.
-        status : dict
+        status
             The status dictionary with information about the minimization
             process. The following information are provided:
 
-            niter : int
+            niter
                 The number of iterations needed to find the minimum.
-            last_nr_step : float
+            last_nr_step
                 The Newton-Raphson step size of the last iteration.
-            p2_n_steps : int
+            p2_n_steps
                 The number of scanning steps performed for the 2nd parameter.
-            warnflag : int
+            warnflag
                 The warning flag indicating if the minimization did converge.
                 The possible values are:
 
-                    0: The minimization converged with a iteration step size
+                    0
                        smaller than the specified precision.
-                    1: The function minimum is below the minimum bound of the
+                    1
                        parameter value. The last iteration's step size did not
                        achieve the specified precision.
-                    2: The function minimum is above the maximum bound of the
+                    2
                        parameter value. The last iteration's step size did not
                        achieve the specified precision.
-            warnreason: str
+            warnreason
                 The description for the set warn flag.
         """
         p2_low = bounds[1][0]
@@ -853,6 +857,9 @@ class NRNsScan2dMinimizerImpl(NR1dNsMinimizerImpl):
                 best_fmin = fmin
                 best_status = status
 
+        assert best_xmin is not None
+        assert best_fmin is not None
+        assert best_status is not None
         best_status['p2_n_steps'] = len(p2_scan_values)
         best_status['niter'] = niter_total
 
@@ -867,17 +874,17 @@ class Minimizer:
 
     def __init__(
         self,
-        minimizer_impl,
-        max_repetitions=100,
+        minimizer_impl: 'MinimizerImpl',
+        max_repetitions: int = 100,
         **kwargs,
     ):
         """Creates a new Minimizer instance.
 
         Parameters
         ----------
-        minimizer_impl : instance of MinimizerImpl
+        minimizer_impl
             The minimizer implementation for a specific minimizer algorithm.
-        max_repetitions : int
+        max_repetitions
             In case the minimization process did not converge at the first time
             this option specifies the maximum number of repetitions with
             different initials.
@@ -916,12 +923,12 @@ class Minimizer:
 
     def minimize(
         self,
-        rss,
-        paramset,
-        func,
+        rss: RandomStateService,
+        paramset: ParameterSet,
+        func: Callable,
         args=None,
-        kwargs=None,
-    ):
+        kwargs: dict | None = None,
+    ) -> tuple[np.ndarray, float, dict]:
         """Minimizes the the given function ``func`` by calling the ``minimize``
         method of the minimizer implementation.
 
@@ -933,31 +940,31 @@ class Minimizer:
 
         Parameters
         ----------
-        rss : RandomStateService instance
+        rss
             The RandomStateService instance to draw random numbers from.
-        paramset : instance of ParameterSet
+        paramset
             The ParameterSet instances holding the floating parameters of the
             function ``func``.
-        func : callable ``f(x, *args)``
+        func
             The function to be minimized. It must have the call signature
 
                 ``__call__(x, *args)``
 
             The return value of ``func`` is minimizer implementation dependent.
-        args : sequence of arguments for ``func`` | None
+        args
             The optional sequence of arguments for ``func``.
-        kwargs : dict | None
+        kwargs
             The optional dictionary with keyword arguments for the minimizer
             implementation minimize method.
 
         Returns
         -------
-        xmin : 1d numpy ndarray
+        xmin
             The array holding the parameter values for which the function has
             a minimum.
-        fmin : float
+        fmin
             The function value at its minimum.
-        status : dict
+        status
             The status dictionary with information about the minimization
             process.
         """

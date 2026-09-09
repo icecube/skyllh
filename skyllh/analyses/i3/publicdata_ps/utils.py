@@ -4,7 +4,10 @@ from scipy import interpolate
 from skyllh.core.binning import (
     get_bincenters_from_binedges,
 )
+from skyllh.core.dataset import Dataset
 from skyllh.core.flux_model import EnergyFluxProfile
+from skyllh.core.random import RandomStateService
+from skyllh.core.storage import DataFieldRecordArray
 
 
 class FctSpline1D:
@@ -14,17 +17,17 @@ class FctSpline1D:
     The evaluate the spline, use the ``__call__`` method.
     """
 
-    def __init__(self, f, x_binedges, norm=False, **kwargs):
+    def __init__(self, f: np.ndarray, x_binedges: np.ndarray, norm: bool = False, **kwargs):
         """Creates a new 1D function spline using the PchipInterpolator
         class from scipy.
 
         Parameters
         ----------
-        f : (n_x,)-shaped 1D numpy ndarray
-            The numpy ndarray holding the function values at the bin centers.
-        x_binedges : (n_x+1,)-shaped 1D numpy ndarray
-            The numpy ndarray holding the bin edges of the x-axis.
-        norm : bool
+        f
+            The (n_x,)-shaped 1D numpy ndarray holding the function values at the bin centers.
+        x_binedges
+            The (n_x+1,)-shaped 1D numpy ndarray holding the bin edges of the x-axis.
+        norm
             Whether to precalculate and save normalization internally.
         """
         super().__init__(**kwargs)
@@ -44,22 +47,22 @@ class FctSpline1D:
             # We choose not to extrapolate out-of-range values.
             self.norm = float(self.spl_f.integrate(x[0], x[-1]))
 
-    def __call__(self, x, oor_value=0):
+    def __call__(self, x: np.ndarray, oor_value: float = 0) -> np.ndarray:
         """Evaluates the spline at the given x values. For x-values
         outside the spline's range, the oor_value is returned.
 
         Parameters
         ----------
-        x : (n_x,)-shaped 1D numpy ndarray
-            The numpy ndarray holding the x values at which the spline should
+        x
+            The (n_x,)-shaped 1D numpy ndarray holding the x values at which the spline should
             get evaluated.
-        oor_value : float
+        oor_value
             The value for out-of-range (oor) coordinates.
 
         Returns
         -------
-        f : (n_x,)-shaped 1D numpy ndarray
-            The numpy ndarray holding the evaluated values of the spline.
+        f
+            The (n_x,)-shaped 1D numpy ndarray holding the evaluated values of the spline.
         """
         f = self.spl_f(x)
         f = np.where(np.isnan(f), oor_value, f)
@@ -81,18 +84,18 @@ class FctSpline2D:
     The evaluate the spline, use the ``__call__`` method.
     """
 
-    def __init__(self, f, x_binedges, y_binedges, **kwargs):
+    def __init__(self, f: np.ndarray, x_binedges: np.ndarray, y_binedges: np.ndarray, **kwargs):
         """Creates a new 2D function spline using the RectBivariateSpline
         class from scipy.
 
         Parameters
         ----------
-        f : (n_x, n_y)-shaped 2D numpy ndarray
-            The numpy ndarray holding the function values at the bin centers.
-        x_binedges : (n_x+1,)-shaped 1D numpy ndarray
-            The numpy ndarray holding the bin edges of the x-axis.
-        y_binedges : (n_y+1,)-shaped 1D numpy ndarray
-            The numpy ndarray holding the bin edges of the y-axis.
+        f
+            The (n_x, n_y)-shaped 2D numpy ndarray holding the function values at the bin centers.
+        x_binedges
+            The (n_x+1,)-shaped 1D numpy ndarray holding the bin edges of the x-axis.
+        y_binedges
+            The (n_y+1,)-shaped 1D numpy ndarray holding the bin edges of the y-axis.
         """
         super().__init__(**kwargs)
 
@@ -125,6 +128,9 @@ class FctSpline2D:
         self._prepare_quadrature()
 
     def _prepare_quadrature(self, n=128):
+        """Pre-computes the Gauss-Legendre quadrature nodes and weights used for
+        renormalizing the spline evaluation.
+        """
         gx, gw = np.polynomial.legendre.leggauss(n)
         self._qx = 0.5 * (self.x_max - self.x_min) * gx + 0.5 * (self.x_max + self.x_min)
         self._qw = 0.5 * (self.x_max - self.x_min) * gw
@@ -133,10 +139,16 @@ class FctSpline2D:
 
     @staticmethod
     def _pow10(arr):
+        """Computes ``10 ** arr`` using an optimized exp-based version that is
+        about 3x faster than ``np.power(10, arr)``.
+        """
         # Alternative optimized version of np.power(10, arr), ~3x faster.
         return np.exp(FctSpline2D._LOG10 * arr)
 
     def _mask_oor_axes(self, x, y):
+        """Returns the masks selecting the ``x`` and ``y`` values that are out of
+        range of the spline's x- and y-axis, respectively.
+        """
         m_x = (x < self.x_min) | (x > self.x_max)
         m_y = (y < self.y_min) | (y > self.y_max)
         return m_x, m_y
@@ -165,7 +177,7 @@ class FctSpline2D:
             f_sorted = f_sorted[:, np.argsort(iy)]
         return f_sorted
 
-    def _renorm_per_y_grid(self, f2d, y, *, in_user_order=True):
+    def _renorm_per_y_grid(self, f2d, y, *, in_user_order: bool = True):
         """Renormalize columns so ∫_x f(x, y) dx = 1 (grid=True)."""
         y = np.asarray(y)
         # For renorm we can evaluate on (qx, y) with grid=True (expects sorted y).
@@ -193,31 +205,33 @@ class FctSpline2D:
         f /= Z[inv]
         return f
 
-    def __call__(self, x, y, oor_value=0, grid=False, renorm=True):
+    def __call__(
+        self, x: np.ndarray, y: np.ndarray, oor_value: float = 0, grid: bool = False, renorm: bool = True
+    ) -> np.ndarray:
         """Evaluates the spline at the given coordinates. For coordinates
         outside the spline's range, the oor_value is returned.
 
         Parameters
         ----------
-        x : (n_x,)-shaped 1D numpy ndarray
-            The numpy ndarray holding the x values at which the spline should
+        x
+            The (n_x,)-shaped 1D numpy ndarray holding the x values at which the spline should
             get evaluated.
-        y : (n_y,)-shaped 1D numpy ndarray
-            The numpy ndarray holding the y values at which the spline should
+        y
+            The (n_y,)-shaped 1D numpy ndarray holding the y values at which the spline should
             get evaluated.
-        oor_value : float | 0
+        oor_value
             The value for out-of-range (oor) coordinates.
-        grid : bool | False
+        grid
             Whether the interpolation should return a 2D numpy array or a
             1D sequence of values.
-        renorm : bool | True
+        renorm
             Whether to renormalize the histogram along the x axis for each
             y-value. Useful when constructing the background energy PDF.
 
         Returns
         -------
-        f : numpy ndarray
-            The numpy ndarray holding the evaluated values of the spline.
+        f
+            The (n_x,)-shaped 1D numpy ndarray holding the evaluated values of the spline.
         """
         x = np.asarray(x)
         y = np.asarray(y)
@@ -251,19 +265,19 @@ class FctSpline2D:
         return f2d
 
 
-def clip_grl_start_times(grl_data):
+def clip_grl_start_times(grl_data: np.ndarray):
     """Make sure that the start time of a run is not smaller than the stop time
     of the previous run.
 
     Parameters
     ----------
-    grl_data : instance of numpy structured ndarray
+    grl_data
         The numpy structured ndarray of length N_runs, with the following
         fields:
 
-        start : float
+        start
             The start time of the run.
-        stop : float
+        stop
             The stop time of the run.
     """
     start = grl_data['start']
@@ -275,26 +289,28 @@ def clip_grl_start_times(grl_data):
     grl_data['start'][1:] = new_start
 
 
-def psi_to_dec_and_ra(rss, src_dec, src_ra, psi):
+def psi_to_dec_and_ra(
+    rss: RandomStateService, src_dec: float, src_ra: float, psi: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
     """Generates random declinations and right-ascension coordinates for the
     given source location and opening angle `psi`.
 
     Parameters
     ----------
-    rss : instance of RandomStateService
+    rss
         The instance of RandomStateService to use for drawing random numbers.
-    src_dec : float
+    src_dec
         The declination of the source in radians.
-    src_ra : float
+    src_ra
         The right-ascension of the source in radians.
-    psi : 1d ndarray of float
+    psi
         The opening-angle values in radians.
 
     Returns
     -------
-    dec : 1d ndarray of float
+    dec
         The declination values.
-    ra : 1d ndarray of float
+    ra
         The right-ascension values.
     """
 
@@ -332,7 +348,7 @@ def psi_to_dec_and_ra(rss, src_dec, src_ra, psi):
     return (dec, ra)
 
 
-def create_energy_cut_spline(ds, exp_data, spl_smooth, cumulative_thr=0):
+def create_energy_cut_spline(ds: Dataset, exp_data: DataFieldRecordArray, spl_smooth: float, cumulative_thr: float = 0):
     """Create the spline for the declination-dependent energy cut
     that the signal generator needs for injection in the southern sky.
     Cut bins which do not exceed the defined `cumulative_thr` threshold
@@ -341,19 +357,19 @@ def create_energy_cut_spline(ds, exp_data, spl_smooth, cumulative_thr=0):
 
     Parameters
     ----------
-    ds : instance of Dataset
+    ds
         The instance of Dataset for which the spline should be calculated.
-    exp_data : instance of DataFieldRecordArray
+    exp_data
         The array containing the experimental data for dataset `ds`.
-    spl_smooth : float
+    spl_smooth
 
-    cumulative_thr : float
+    cumulative_thr
         Defaults to 0 that corresponds to no cut.
 
 
     Returns
     -------
-    spline : instance of scipy.interpolate.UnivariateSpline
+    spline
 
     """
     data_exp = exp_data.copy(keep_fields=['sin_dec', 'log_energy'])
@@ -510,7 +526,7 @@ def _reco_energy_counts_per_ds(ds, sm, flux, dec, reco_e_edges, Phi0, energy_ran
 
 
 def compute_expected_reco_energy_counts(
-    datasets, flux, dec, Phi0, time_integral=False, livetimes=None, energy_range=None
+    datasets, flux, dec, Phi0, time_integral: bool = False, livetimes=None, energy_range=None
 ):
     """Returns the expected distribution of events in reconstructed energy for a given flux and declination.
     If a list of datasets is provided, it returns the sum of all datasets contributions.
@@ -525,7 +541,7 @@ def compute_expected_reco_energy_counts(
         The declination in radians.
     Phi0 : float
         The flux normalization factor.
-    time_integral : bool
+    time_integral
         Whether to return the total expected counts (True) or the expected counts per second (False).
         Default is False (counts per second).
     livetimes : (len(datasets),)-iterable of float and None | None
@@ -597,6 +613,7 @@ def compute_expected_reco_energy_counts(
             else:
                 data = ds.load_data()
                 livetime = data.livetime
+            assert livetime is not None
             counts_total += counts_per_sec * livetime * 24 * 3600  # Convert days to seconds
         else:
             counts_total += counts_per_sec

@@ -1,11 +1,13 @@
 import numpy as np
 
+from skyllh.core.analysis import SingleSourceMultiDatasetLLHRatioAnalysis
 from skyllh.core.logging import (
     get_logger,
 )
 from skyllh.core.progressbar import (
     ProgressBar,
 )
+from skyllh.core.random import RandomStateService
 from skyllh.core.source_model import (
     PointLikeSource,
 )
@@ -16,8 +18,16 @@ from skyllh.core.utils.analysis import (
 
 
 def generate_ps_sin_dec_h0_ts_values(
-    ana, rss, sin_dec_min, sin_dec_max, sin_dec_step, n_bkg_trials=10000, n_iter=1, bkg_kwargs=None, ppbar=None
-):
+    ana: SingleSourceMultiDatasetLLHRatioAnalysis,
+    rss: RandomStateService,
+    sin_dec_min: float,
+    sin_dec_max: float,
+    sin_dec_step: float,
+    n_bkg_trials: int = 10000,
+    n_iter: int = 1,
+    bkg_kwargs: dict | None = None,
+    ppbar: ProgressBar | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
     """Generates sets of null-hypothesis, i.e. background-only trial data
     events, test-statistic values for the given point-source analysis for a
     grid of sin(dec) values.
@@ -27,40 +37,40 @@ def generate_ps_sin_dec_h0_ts_values(
 
     Parameters
     ----------
-    ana : Analysis instance
+    ana
         The instance of Analysis to use for generating trials.
-    rss : RandomStateService instance
+    rss
         The instance of RandomStateService to use for generating random numbers
         from.
-    sin_dec_min : float
+    sin_dec_min
         The minimum sin(dec) value for creating the sin(dec) value grid.
-    sin_dec_max : float
+    sin_dec_max
         The maximum sin(dec) value for creating the sin(dec) value grid.
-    sin_dec_step : float
+    sin_dec_step
         The step size in sin(dec) for creating the sin(dec) value grid.
-    n_bkg_trials : int, optional
+    n_bkg_trials
         The number of background trials to generate.
         Default is 10000.
-    n_iter : int, optional
+    n_iter
         Each set of ts values can be calculated several times to be able to
         estimate the variance of the sensitivity / discovery potential.
         This parameter specifies the number of iterations to perform.
         For each iteration the RandomStateService is re-seeded with a seed that
         is incremented by 1.
         Default is 1.
-    bkg_kwargs : dict | None
+    bkg_kwargs
         Additional keyword arguments for the `generate_events` method of the
         background generation method class. An usual keyword argument is
         `poisson`.
-    ppbar : ProgressBar instance | None
+    ppbar
         The optional parent progress bar.
 
     Returns
     -------
-    sin_dec_arr : (n_sin_dec,)-shaped 1D ndarray of float
+    sin_dec_arr
         The numpy ndarray holding the sin(dec) values for which the ts values
         have been calculated.
-    h0_ts_vals_arr : (n_sin_dec,n_iter,n_bkg_trials)-shaped 3D ndarray of float
+    h0_ts_vals_arr
         The numpy ndarray holding the null-hypothesis ts values for all
         sin(dec) values and iterations.
     """
@@ -96,6 +106,7 @@ def generate_ps_sin_dec_h0_ts_values(
 
         pbar_iter.increment()
 
+        assert rss.seed is not None
         rss.reseed(rss.seed + 1)
     pbar_iter.finish()
 
@@ -103,66 +114,66 @@ def generate_ps_sin_dec_h0_ts_values(
 
 
 def estimate_ps_sin_dec_sensitivity_curve(
-    ana,
-    rss,
-    sin_dec_arr,
-    h0_ts_vals_arr,
-    eps_p=0.0075,
-    mu_min=0,
-    mu_max=20,
-    n_iter=1,
-    bkg_kwargs=None,
-    sig_kwargs=None,
-    ppbar=None,
+    ana: SingleSourceMultiDatasetLLHRatioAnalysis,
+    rss: RandomStateService,
+    sin_dec_arr: np.ndarray,
+    h0_ts_vals_arr: np.ndarray,
+    eps_p: float = 0.0075,
+    mu_min: float = 0,
+    mu_max: float = 20,
+    n_iter: int = 1,
+    bkg_kwargs: dict | None = None,
+    sig_kwargs: dict | None = None,
+    ppbar: ProgressBar | None = None,
     **kwargs,
-):
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Estimates the point-source sensitivity of the given analysis as a
     function of sin(dec). This function places a PointLikeSource source on the
     given declination values and estimates its sensitivity.
 
     Parameters
     ----------
-    ana : Analysis instance
+    ana
         The instance of Analysis to use for generating trials.
-    rss : RandomStateService instance
+    rss
         The instance of RandomStateService to use for generating random numbers
         from.
-    sin_dec_arr : (n_sin_dec,)-shaped 1D ndarray
+    sin_dec_arr
         The ndarray holding the sin(dec) values for which to estimate the
         point-source sensitivity.
-    h0_ts_vals_arr : (n_sin_dec,n_iter,n_bkg_trials)-shaped 3D ndarray of float
+    h0_ts_vals_arr
         The numpy ndarray holding the null-hypothesis ts values for all
         sin(dec) values and iterations.
-    eps_p : float, optional
+    eps_p
         The precision in probability used for the `estimate_sensitivity`
         function.
         Default is 0.0075.
-    mu_min : float, optional
+    mu_min
         The minimum value for the mean number of injected signal events as a
         seed for the mu range in which the sensitivity is located.
         Default is 0.
-    mu_max : float, optional
+    mu_max
         The maximum value for the mean number of injected signal events as a
         seed for the mu range in which the sensitivity is located.
         Default is 20.
-    n_iter : int, optional
+    n_iter
         Each sensitivity can be estimated several times to be able to estimate
         the variance of the sensitivity. This parameter specifies the number of
         iterations to perform for each sensitivity.
         For each iteration the RandomStateService is re-seeded with a seed that
         is incremented by 1.
         Default is 1.
-    bkg_kwargs : dict | None
+    bkg_kwargs
         Additional keyword arguments for the `generate_events` method of the
         background generation method class. An usual keyword argument is
         `poisson`.
-    sig_kwargs : dict | None
+    sig_kwargs
         Additional keyword arguments for the `generate_signal_events` method
         of the `SignalGenerator` class. An usual keyword argument is
         `poisson`. If `poisson` is set to True, the actual number of
         generated signal events will be drawn from a Poisson distribution
         with the given mean number of signal events.
-    ppbar : ProgressBar instance | None
+    ppbar
         The optional parent progress bar.
 
     Additional Keyword Arguments
@@ -172,16 +183,16 @@ def estimate_ps_sin_dec_sensitivity_curve(
 
     Returns
     -------
-    sin_dec_arr : (n_sin_dec,)-shaped 1D ndarray
+    sin_dec_arr
         The ndarray holding the sin(dec) values for which the sensitivities have
         been estimated.
-    mean_ns_arr : (n_sin_dec,n_iter)-shaped 2D ndarray
+    mean_ns_arr
         The ndarray holding the mean number of signal events corresponding to
         the sensitivity for each sin(dec) value and iteration.
-    mean_ns_err_arr : (n_sin_dec,n_iter)-shaped 2D ndarray
+    mean_ns_err_arr
         The ndarray holding the estimated error in `mean_ns` for each sin(dec)
         value and iteration.
-    flux_scaling_arr : (n_sin_dec,n_iter)-shaped 2D ndarray
+    flux_scaling_arr
         The ndarray holding the scaling factor the reference flux needs to get
         scaled to obtain the flux for the estimated sensitivity.
     """
@@ -212,7 +223,7 @@ def estimate_ps_sin_dec_sensitivity_curve(
                 rss,
                 mu_range=(mu_min, mu_max),
                 eps_p=eps_p,
-                h0_ts_vals=h0_ts_vals,
+                h0_trials=h0_ts_vals,
                 bkg_kwargs=bkg_kwargs,
                 sig_kwargs=sig_kwargs,
                 ppbar=pbar_iter,
@@ -227,6 +238,7 @@ def estimate_ps_sin_dec_sensitivity_curve(
             mu_min_arr = np.mean(mean_ns_arr[:, 0 : iter_idx + 1] * 0.8, axis=1)
             mu_max_arr = np.mean(mean_ns_arr[:, 0 : iter_idx + 1] * 1.2, axis=1)
 
+            assert rss.seed is not None
             rss.reseed(rss.seed + 1)
 
             pbar_iter.increment()
@@ -263,7 +275,7 @@ def estimate_ps_sin_dec_sensitivity_curve(
                     rss,
                     mu_range=(mu_min, mu_max),
                     eps_p=eps_p,
-                    h0_ts_vals=h0_ts_vals,
+                    h0_trials=h0_ts_vals,
                     bkg_kwargs=bkg_kwargs,
                     sig_kwargs=sig_kwargs,
                     ppbar=pbar_sin_dec,
@@ -280,72 +292,72 @@ def estimate_ps_sin_dec_sensitivity_curve(
 
 
 def estimate_ps_sin_dec_discovery_potential_curve(
-    ana,
-    rss,
-    sin_dec_arr,
-    h0_ts_vals_arr,
-    h0_ts_quantile=2.7e-3,
-    eps_p=0.0075,
-    mu_min=0,
-    mu_max=20,
-    n_iter=1,
-    bkg_kwargs=None,
-    sig_kwargs=None,
-    ppbar=None,
+    ana: SingleSourceMultiDatasetLLHRatioAnalysis,
+    rss: RandomStateService,
+    sin_dec_arr: np.ndarray,
+    h0_ts_vals_arr: np.ndarray,
+    h0_ts_quantile: float = 2.7e-3,
+    eps_p: float = 0.0075,
+    mu_min: float = 0,
+    mu_max: float = 20,
+    n_iter: int = 1,
+    bkg_kwargs: dict | None = None,
+    sig_kwargs: dict | None = None,
+    ppbar: ProgressBar | None = None,
     **kwargs,
-):
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Estimates the point-source discovery potential of the given analysis as a
     function of sin(dec). This function places a PointLikeSource source on the
     given declination values and estimates its discovery potential.
 
     Parameters
     ----------
-    ana : Analysis instance
+    ana
         The instance of Analysis to use for generating trials.
-    rss : RandomStateService instance
+    rss
         The instance of RandomStateService to use for generating random numbers
         from.
-    sin_dec_arr : (n_sin_dec,)-shaped 1D ndarray
+    sin_dec_arr
         The ndarray holding the sin(dec) values for which to estimate the
         point-source sensitivity.
-    h0_ts_vals_arr : (n_sin_dec,n_iter,n_bkg_trials)-shaped 3D ndarray of float
+    h0_ts_vals_arr
         The numpy ndarray holding the null-hypothesis ts values for all
         sin(dec) values and iterations.
-    h0_ts_quantile : float, optional
+    h0_ts_quantile
         Null-hypothesis test statistic quantile that defines the critical value.
         For a 5sigma discovery potential that value is 5.733e-7. For a 3sigma
         discovery potential this value is 2.7e-3.
         Default is 2.7e-3.
-    eps_p : float, optional
+    eps_p
         The precision in probability used for the `estimate_discovery_potential`
         function.
         Default is 0.0075.
-    mu_min : float, optional
+    mu_min
         The minimum value for the mean number of injected signal events as a
         seed for the mu range in which the sensitivity is located.
         Default is 0.
-    mu_max : float, optional
+    mu_max
         The maximum value for the mean number of injected signal events as a
         seed for the mu range in which the sensitivity is located.
         Default is 20.
-    n_iter : int, optional
+    n_iter
         Each discovery potential can be estimated several times to be able to
         estimate its variance. This parameter specifies the number of
         iterations to perform for each discovery potential estimation.
         For each iteration the RandomStateService is re-seeded with a seed that
         is incremented by 1.
         Default is 1.
-    bkg_kwargs : dict | None
+    bkg_kwargs
         Additional keyword arguments for the `generate_events` method of the
         background generation method class. An usual keyword argument is
         `poisson`.
-    sig_kwargs : dict | None
+    sig_kwargs
         Additional keyword arguments for the `generate_signal_events` method
         of the `SignalGenerator` class. An usual keyword argument is
         `poisson`. If `poisson` is set to True, the actual number of
         generated signal events will be drawn from a Poisson distribution
         with the mean number of signal events, mu.
-    ppbar : ProgressBar instance | None
+    ppbar
         The optional parent progress bar.
 
     Additional Keyword Arguments
@@ -355,16 +367,16 @@ def estimate_ps_sin_dec_discovery_potential_curve(
 
     Returns
     -------
-    sin_dec_arr : (n_sin_dec,)-shaped 1D ndarray
+    sin_dec_arr
         The ndarray holding the sin(dec) values for which the discovery
         potential have been estimated.
-    mean_ns_arr : (n_sin_dec,n_iter)-shaped 2D ndarray
+    mean_ns_arr
         The ndarray holding the mean number of signal events corresponding to
         the discovery potential for each sin(dec) value and iteration.
-    mean_ns_err_arr : (n_sin_dec,n_iter)-shaped 2D ndarray
+    mean_ns_err_arr
         The ndarray holding the estimated error in `mean_ns` for each sin(dec)
         value and iteration.
-    flux_scaling_arr : (n_sin_dec,n_iter)-shaped 2D ndarray
+    flux_scaling_arr
         The ndarray holding the scaling factor the reference flux needs to get
         scaled to obtain the flux for the estimated discovery potential.
     """
@@ -393,7 +405,7 @@ def estimate_ps_sin_dec_discovery_potential_curve(
                 h0_ts_quantile=h0_ts_quantile,
                 mu_range=(mu_min, mu_max),
                 eps_p=eps_p,
-                h0_ts_vals=h0_ts_vals,
+                h0_trials=h0_ts_vals,
                 bkg_kwargs=bkg_kwargs,
                 sig_kwargs=sig_kwargs,
                 ppbar=pbar,
@@ -413,6 +425,7 @@ def estimate_ps_sin_dec_discovery_potential_curve(
 
         pbar_iter.increment()
 
+        assert rss.seed is not None
         rss.reseed(rss.seed + 1)
     pbar_iter.finish()
 

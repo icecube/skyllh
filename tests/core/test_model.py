@@ -49,9 +49,9 @@ class ModelCollection_TestCase(unittest.TestCase):
 
         # Test that non-Model instances raises a TypeError.
         with self.assertRaises(TypeError):
-            modelcoll = ModelCollection.cast('A str instance.')
+            modelcoll = ModelCollection.cast('A str instance.')  # pyright: ignore[reportArgumentType]
         with self.assertRaises(TypeError):
-            modelcoll = ModelCollection.cast(('str1', 'str2'))
+            modelcoll = ModelCollection.cast(('str1', 'str2'))  # pyright: ignore[reportArgumentType]
 
     def test_model_type(self):
         self.assertTrue(issubclass(self.modelcoll.model_type, Model))

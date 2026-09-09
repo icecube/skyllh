@@ -2,10 +2,10 @@ import argparse
 import os.path
 import pickle
 
-import crflux.models as pm
-import mceq_config as config
+import crflux.models as pm  # pyright: ignore[reportMissingImports]
+import mceq_config as config  # pyright: ignore[reportMissingImports]
 import numpy as np
-from MCEq.core import (
+from MCEq.core import (  # pyright: ignore[reportMissingImports]
     MCEqRun,
 )
 

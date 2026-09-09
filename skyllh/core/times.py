@@ -1,6 +1,9 @@
 import abc
 
+import numpy as np
+
 from skyllh.core.livetime import Livetime
+from skyllh.core.random import RandomStateService
 
 
 class TimeGenerationMethod(
@@ -9,28 +12,30 @@ class TimeGenerationMethod(
     """Base class (type) for implementing a method to generate times."""
 
     def __init__(self, **kwargs):
+        """Creates a new instance of TimeGenerationMethod."""
         super().__init__(**kwargs)
 
     @abc.abstractmethod
     def generate_times(
         self,
-        rss,
-        size,
-    ):
+        rss: RandomStateService,
+        size: int,
+        **kwargs,
+    ) -> np.ndarray:
         """The ``generate_times`` method implements the actual generation of
         times, which is method dependent.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The random state service providing the random number
             generator (RNG).
-        size : int
+        size
             The number of times that should get generated.
 
         Returns
         -------
-        times : ndarray
+        times
             The 1d numpy ndarray holding the generated times.
         """
 
@@ -44,12 +49,12 @@ class LivetimeTimeGenerationMethod(
     method of the Livetime class.
     """
 
-    def __init__(self, livetime, **kwargs):
+    def __init__(self, livetime: Livetime, **kwargs):
         """Creates a new LivetimeTimeGeneration instance.
 
         Parameters
         ----------
-        livetime : Livetime
+        livetime
             The Livetime instance that should be used to generate times from.
         """
         super().__init__(**kwargs)
@@ -69,8 +74,8 @@ class LivetimeTimeGenerationMethod(
 
     def generate_times(
         self,
-        rss,
-        size,
+        rss: RandomStateService,
+        size: int,
         **kwargs,
     ):
         """Generates `size` MJD times according to the detector on-times
@@ -78,15 +83,15 @@ class LivetimeTimeGenerationMethod(
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The random state service providing the random number
             generator (RNG).
-        size : int
+        size
             The number of times that should get generated.
 
         Returns
         -------
-        times : ndarray
+        times
             The 1d (`size`,)-shaped numpy ndarray holding the generated times.
         """
         times = self._livetime.draw_ontimes(rss=rss, size=size, **kwargs)
@@ -95,13 +100,17 @@ class LivetimeTimeGenerationMethod(
 
 
 class TimeGenerator:
-    def __init__(self, method):
+    """This class provides a time generator that generates times according to a
+    defined time generation method.
+    """
+
+    def __init__(self, method: 'TimeGenerationMethod'):
         """Creates a time generator instance with a given defined time
         generation method.
 
         Parameters
         ----------
-        method : instance of TimeGenerationMethod
+        method
             The instance of TimeGenerationMethod that defines the method of
             generating times.
         """
@@ -122,8 +131,8 @@ class TimeGenerator:
 
     def generate_times(
         self,
-        rss,
-        size,
+        rss: RandomStateService,
+        size: int,
         **kwargs,
     ):
         """Generates ``size`` amount of times by calling the ``generate_times``
@@ -131,10 +140,10 @@ class TimeGenerator:
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The random state service providing the random number generator
             (RNG).
-        size : int
+        size
             The number of time that should get generated.
         **kwargs
             Additional keyword arguments are passed to the ``generate_times``
@@ -142,7 +151,7 @@ class TimeGenerator:
 
         Returns
         -------
-        times : ndarray
+        times
             The 1d (``size``,)-shaped ndarray holding the generated times.
         """
         times = self._method.generate_times(rss=rss, size=size, **kwargs)

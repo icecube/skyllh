@@ -35,7 +35,7 @@ def shgm_setup(n_sources=1):
     # Mock SourceHypoGroupManager class in order to pass isinstance checks and
     # set its properties used by event selection methods.
     shgm = Mock(spec_set=['__class__', 'source_list', 'n_sources'])
-    shgm.__class__ = SourceHypoGroupManager
+    shgm.__class__ = SourceHypoGroupManager  # pyright: ignore[reportAttributeAccessIssue]
 
     rng = np.random.default_rng(0)
     x = rng.random((n_sources, 2))
@@ -74,6 +74,7 @@ class AllEventSelectionMethod_TestCase(unittest.TestCase):
         shg_mgr = shgm_setup(n_sources=n_sources)
         evt_sel_method = AllEventSelectionMethod(shg_mgr)
 
+        assert evt_sel_method.shg_mgr is not None
         self.assertEqual(
             evt_sel_method.shg_mgr.source_list,
             shg_mgr.source_list,
@@ -88,6 +89,7 @@ class AllEventSelectionMethod_TestCase(unittest.TestCase):
         shg_mgr_new = shgm_setup(n_sources=n_sources)
         evt_sel_method.change_shg_mgr(shg_mgr_new)
 
+        assert evt_sel_method.shg_mgr is not None
         self.assertEqual(
             evt_sel_method.shg_mgr.source_list,
             shg_mgr_new.source_list,

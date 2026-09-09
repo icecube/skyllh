@@ -11,7 +11,7 @@ from skyllh.core.py import (
 
 
 def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
-    profile,
+    profile: TimeFluxProfile,
 ):
     """This function builds a scipy.stats.rv_continuous instance for a given
     :class:`~skyllh.core.flux_model.TimeFluxProfile` instance.
@@ -21,13 +21,13 @@ def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
 
     Parameters
     ----------
-    profile : instance of TimeFluxProfile
+    profile
         The instance of TimeFluxProfile providing the function of the time flux
         profile.
 
     Returns
     -------
-    rv : instance of rv_continuous_frozen
+    rv
         The instance of rv_continuous_frozen representing the time flux profile
         as a continuous random variate instance.
     """
@@ -42,6 +42,10 @@ def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
         norm = 1 / tot_integral
 
     class rv_continuous_from_TimeFluxProfile(rv_continuous):
+        """This class provides a scipy ``rv_continuous`` random variable whose
+        probability density is given by a time flux profile instance.
+        """
+
         def __init__(self, *args, **kwargs):
             """Creates a new instance of the subclass of rv_continuous using
             the time flux profile.
@@ -51,24 +55,25 @@ def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
 
             super().__init__(*args, **kwargs)
 
-        def _pdf(self, t):
+        def _pdf(self, x, *args):
             """Calculates the probability density of the time flux profile
             function for given time values.
             """
-            pd = self._profile(t=t) * self._norm
+            pd = self._profile(t=x) * self._norm
 
             return pd
 
-        def _cdf(self, t):
+        def _cdf(self, x, *args):
             """Calculates the cumulative distribution function values for rhe
             given time values. If the time flux profile instance provides a
             ``cdf`` method, it will be used. Otherwise the generic ``_cdf``
             method of the ``rv_continuous`` class will be used.
             """
-            if hasattr(self._profile, 'cdf') and callable(self._profile.cdf):
-                return self._profile.cdf(t=t)
+            profile_cdf = getattr(self._profile, 'cdf', None)
+            if callable(profile_cdf):
+                return profile_cdf(t=x)
 
-            return super()._cdf(t)
+            return super()._cdf(x)
 
     rv = rv_continuous_from_TimeFluxProfile(
         a=profile.t_start,
