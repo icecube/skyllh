@@ -5,6 +5,7 @@ model for a point-like source at a given location in the sky.
 """
 
 from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING, Self, cast
 
 import numpy as np
 
@@ -19,6 +20,9 @@ from skyllh.core.py import (
     str_cast,
     typename,
 )
+
+if TYPE_CHECKING:
+    from astropy.coordinates import SkyCoord
 
 
 class SourceModel(
@@ -262,6 +266,93 @@ class PointLikeSource(SourceModel, IsPointlike):
 
         self.ra = ra
         self.dec = dec
+
+    @classmethod
+    def from_degrees(
+        cls, ra: float, dec: float, name: str | None = None, weight: float | None = None, **kwargs
+    ) -> Self:
+        """Creates a new PointLikeSource instance from a right-ascention and
+        declination coordinate given in degrees.
+
+        Parameters
+        ----------
+        ra
+            The right-ascention coordinate of the source in degrees.
+        dec
+            The declination coordinate of the source in degrees. It must be
+            within [-90, 90] degrees.
+        name
+            The name of the source.
+        weight
+            The relative weight of the source w.r.t. other sources.
+            If set to None, unity will be used.
+        **kwargs
+            Additional keyword arguments passed to the constructor.
+
+        Returns
+        -------
+        source
+            The new PointLikeSource instance.
+
+        Raises
+        ------
+        ValueError
+            If the declination is outside the range [-90, 90] degrees.
+        """
+        if not -90 <= dec <= 90:
+            raise ValueError(f'The declination must be within [-90, 90] degrees! Got {dec} degrees.')
+
+        return cls(ra=float(np.deg2rad(ra)), dec=float(np.deg2rad(dec)), name=name, weight=weight, **kwargs)
+
+    @classmethod
+    def from_skycoord(cls, coord: 'SkyCoord', name: str | None = None, weight: float | None = None, **kwargs) -> Self:
+        """Creates a new PointLikeSource instance from an astropy
+        :class:`~astropy.coordinates.SkyCoord` instance.
+
+        The coordinate is transformed into the ICRS frame first, hence
+        coordinates given in any celestial frame (e.g. galactic) are supported.
+        A coordinate can also be looked up by the source name via
+        :meth:`astropy.coordinates.SkyCoord.from_name`.
+
+        Parameters
+        ----------
+        coord
+            The scalar SkyCoord instance holding the location of the source.
+        name
+            The name of the source.
+        weight
+            The relative weight of the source w.r.t. other sources.
+            If set to None, unity will be used.
+        **kwargs
+            Additional keyword arguments passed to the constructor.
+
+        Returns
+        -------
+        source
+            The new PointLikeSource instance.
+
+        Raises
+        ------
+        TypeError
+            If ``coord`` is not an instance of SkyCoord.
+        ValueError
+            If ``coord`` holds more than one coordinate.
+        """
+        from astropy.coordinates import ICRS, SkyCoord, UnitSphericalRepresentation
+
+        if not isinstance(coord, SkyCoord):
+            raise TypeError(
+                f'The coord argument must be an instance of SkyCoord! Its current type is {classname(coord)}.'
+            )
+        if not coord.isscalar:
+            raise ValueError(f'The coord argument must hold a single coordinate! It holds {coord.size} coordinates.')
+
+        sph = cast(
+            UnitSphericalRepresentation,
+            coord.frame.transform_to(ICRS()).represent_as(UnitSphericalRepresentation),
+        )
+
+        return cls(ra=float(sph.lon.rad), dec=float(sph.lat.rad), name=name, weight=weight, **kwargs)
 
     def _get_ra(self):
         """Returns the right-ascention of the source in radians."""
