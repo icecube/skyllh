@@ -257,21 +257,23 @@ class TaskTimer:
     def duration(self) -> float:
         """The duration in seconds the task was executed."""
         assert self._end is not None and self._start is not None, (
-            'TaskTimer must be used as a context manager before accessing duration'
+            'TaskTimer must be used as a context manager with a TimeLord instance before accessing duration'
         )
         return self._end - self._start
 
     def __enter__(self):
         """This gets executed when entering the `with` block."""
-        self._start = time.process_time()
+        # Without a TimeLord nothing gets recorded, so skip the (comparatively expensive) clock query.
+        if self._time_lord is not None:
+            self._start = time.process_time()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         """This gets executed when exiting the `with` block."""
-        self._end = time.process_time()
-
         if self._time_lord is None:
             return
+
+        self._end = time.process_time()
 
         assert self._start is not None
         self._time_lord.add_task_record(TaskRecord(name=self._name, start_times=[self._start], end_times=[self._end]))
