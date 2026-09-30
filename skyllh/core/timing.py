@@ -263,7 +263,7 @@ class TaskTimer:
 
     def __enter__(self):
         """This gets executed when entering the `with` block."""
-        # Without a TimeLord nothing gets recorded, so skip the (comparatively expensive) clock query.
+        # Without a TimeLord nothing gets recorded, so skip the clock query.
         if self._time_lord is not None:
             self._start = time.process_time()
         return self
