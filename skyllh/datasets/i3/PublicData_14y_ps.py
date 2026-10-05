@@ -121,7 +121,7 @@ def create_dataset_collection(
       assigned unique integer subevent IDs. Subevent IDs are indexed from 0 for each shared event ID. This serves as a
       way to distinguish temporally coincident events in the data.
 
-    - MJD[days]: The MJD time (ut1) of the event interaction given to 1e-8 days, corresponding to roughly millisecond
+    - MJD[days]: The MJD time (utc) of the event interaction given to 1e-8 days, corresponding to roughly millisecond
       precision.
 
     - log10(E/GeV): The reconstructed energy of a muon passing through the detector. The reconstruction follows the
