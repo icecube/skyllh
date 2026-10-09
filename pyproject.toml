@@ -30,7 +30,7 @@ dependencies = [
     "matplotlib",
     "numpy",
     "pyyaml",
-    "scipy<1.18",
+    "scipy!=1.18.0",  # 1.18.0 cannot pickle PchipInterpolator
     "tqdm",
 ]
 
