@@ -1897,6 +1897,248 @@ class GaussianTimeFluxProfile(
 
         return integral
 
+class BPLTimeFluxProfile(
+    TimeFluxProfile,
+):
+    """This class describes a broken power-law time flux profile.
+    It has the following parameters:
+
+        t_break : break times
+        alpha : corresponding decay indices
+    """
+
+    def __init__(
+        self,
+        t_break: np.ndarray,
+        alpha: np.ndarray,
+        time_unit: units.UnitBase | None = None,
+        **kwargs,
+    ):
+        """_summary_
+
+        Args:
+            t_break (np.ndarray): _description_
+            alpha (np.ndarray): _description_
+                    time_unit
+            The used unit for time.
+            If set to ``None``, the configured default time unit for fluxes is
+            used.
+        """
+        t_start = t_break[0]
+        t_stop = t_break[-1]
+
+        super().__init__(t_start=t_start, t_stop=t_stop, time_unit=time_unit, **kwargs)
+
+        # Define the parameters which can be set via the `set_params`
+        # method.
+        self.param_names = tuple(sum([
+            [f"alpha{i}", f"t_break{i}"]
+             for i in range(t_break.size)], []))
+        self.t_break = t_break
+        self.alpha = alpha
+
+    
+    # @property
+    # def math_function_str(self):
+    #     """The string representation of the mathematical function of this time
+    #     flux profile.
+    #     """
+    #     return 'exp(-(t-t0)^2/(2 sigma_t^2))'
+
+    @property
+    def t0(self):
+        """The time of the peak point of the BPL.
+        The unit of the value is the set time unit of this TimeFluxProfile
+        instance.
+        """
+        return self.t_start
+
+    @t0.setter
+    def t0(self, t):
+        t = float_cast(t, 'The t0 property must be castable to type float!')
+        old_t0 = self.t0
+        dt = t - old_t0
+        self.move(dt)
+
+    @property
+    def t_break(self):
+        """The one-sigma width of the gaussian profile.
+        The unit of the value is the set time unit of this TimeFluxProfile
+        instance.
+        """
+        return self._t_break
+
+    @t_break.setter
+    def t_break(self, t_break):
+        t_break = float_cast(t_break, 'The t_break property must be castable to type float!')
+        self._t_break = t_break
+
+    @property
+    def alpha(self):
+        return self._alpha
+
+    @alpha.setter
+    def alpha(self, alpha):
+        alpha = float_cast(alpha, 'The alpha property must be castable to type float!')
+        self._alpha = alpha
+
+
+    def __call__(
+        self,
+        t: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
+        """Returns the gaussian profile value for the given time ``t``.
+
+        Parameters
+        ----------
+        t
+            The time(s) for which to get the time flux profile values.
+        unit
+            The unit of the given times.
+            If set to ``None``, the set time unit of this TimeFluxProfile is
+            assumed.
+
+        Returns
+        -------
+        values
+            The value(s) of the time flux profile for the given time(s).
+        """
+        t = np.atleast_1d(t)
+
+        if (unit is not None) and (unit != self._time_unit):
+            time_unit_conv_factor = unit.to(self._time_unit)
+            t = t * time_unit_conv_factor
+
+        m = (t >= self.t_start) & (t < self.t_stop)
+
+        t0 = self.t_start
+        t1 = self.t_break[1]
+        t2 = self.t_break[2]
+        a0, a1, a2 = self.alpha[0], self.alpha[1], self.alpha[2]
+
+        i_bin = np.digitize(t[m], self.t_break) - 1 # FIXME use relative times for this parameter
+        values = np.zeros_like(t)
+        values[m] = 1
+        values[m][i_bin==1] = np.power((t[m] / t0, -a0))
+        values[m][i_bin==2] = np.power((t[m] / t0, -a1)) * np.power(t1/t0, a1 - a0)
+        values[m][i_bin==3] = np.power((t[m] / t2, -a2)) * np.power(t1/t0, a1 - a0) * np.power(t2/t0, -a1)
+
+
+        return values
+
+    def cdf(
+        self,
+        t: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
+        """Calculates the cumulative distribution function values for the given
+        time values ``t``.
+
+        Parameters
+        ----------
+        t
+            The (N_times,)-shaped numpy ndarray holding the time values for
+            which to calculate the CDF values.
+        unit
+            The unit of the given times.
+            If set to ``None``, the set time unit of this TimeFluxProfile is
+            assumed.
+
+        Returns
+        -------
+        values
+            The (N_times,)-shaped numpy ndarray holding the cumulative
+            distribution function values for each time ``t``.
+        """
+        t = np.atleast_1d(t)
+
+        if (unit is not None) and (unit != self._time_unit):
+            t = t * unit.to(self._time_unit)
+
+        t_start = self._t_start
+        t_stop = self._t_stop
+
+        values = np.zeros(t.size, dtype=np.float64)
+
+        m = (t_start <= t) & (t <= t_stop)
+        values[m] = self.get_integral(t1=t_start, t2=t[m]) / self.get_total_integral()
+
+        m = t > t_stop
+        values[m] = 1
+
+        return values
+
+    def move(
+        self,
+        dt: float,
+        unit: units.UnitBase | None = None,
+    ):
+        """Moves the gaussian time profile by the given amount of time.
+
+        Parameters
+        ----------
+        dt
+            The time difference of how far to move the time profile in time.
+            This can be a positive or negative time shift value.
+        unit
+            The unit of the given time difference.
+            If set to ``None``, the set time unit of this TimeFluxProfile is
+            assumed.
+        """
+        if (unit is not None) and (unit != self._time_unit):
+            dt = dt * unit.to(self._time_unit)  # pyright: ignore[reportAssignmentType]
+
+        self._t_start += dt
+        self._t_stop += dt
+        self._t_break += dt
+
+    def get_integral(
+        self,
+        t1: float | np.ndarray,
+        t2: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
+        """Calculates the integral of the BPL time profile from time ``t1``
+        to time ``t2``.
+
+        Parameters
+        ----------
+        t1
+            The start time(s) of the integration.
+        t2
+            The end time(s) of the integration.
+        unit
+            The unit of the given times.
+            If set to ``None``, the set time unit of this TimeFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        integral
+            The integral value(s). The values are in the set time unit of
+            this TimeFluxProfile instance.
+        """
+        if (unit is not None) and (unit != self._time_unit):
+            time_unit_conv_factor = float(unit.to(self._time_unit))  # pyright: ignore[reportArgumentType]
+            t1 = t1 * time_unit_conv_factor
+            t2 = t2 * time_unit_conv_factor
+        
+        from scipy.stats import powerlaw # FIXME do this properly
+        pl0 = powerlaw(self.alpha[0])
+        pl1 = powerlaw(self.alpha[1])
+        pl2 = powerlaw(self.alpha[2])
+        def clip_bound(t, i):
+            return np.maximum(np.minimum(t, self.t_break[i+1]), self.t_break[i])
+        
+        integral = 0
+        integral += self.norm[0] * (pl0.cdf(clip_bound(t2, 0)) - pl0.cdf(clip_bound(t1, 0)))
+        integral += self.norm[1] * (pl1.cdf(clip_bound(t2, 1)) - pl1.cdf(clip_bound(t1, 1)))
+        integral += self.norm[2] * (pl2.cdf(clip_bound(t2, 2)) - pl2.cdf(clip_bound(t1, 2)))
+        # FIXME make it correct
+        # FIXME precompute norms
+        # TODO vectorize
+        return integral
 
 class FluxModel(
     MathFunction,
