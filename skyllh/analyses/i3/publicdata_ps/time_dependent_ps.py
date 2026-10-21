@@ -177,7 +177,7 @@ def create_signal_time_pdf(
         None or dictionary with {"start": float, "stop": float}.
     bpl
         Properties of the BPL time PDF.
-        None of dictionary with {"t_break" [float], "alpha": float}.
+        None of dictionary with {"t0": float, "dt_break" [float], "alpha": [float]}.
 
     Returns
     -------
@@ -192,7 +192,7 @@ def create_signal_time_pdf(
     elif box is not None:
         time_flux_profile = BoxTimeFluxProfile.from_start_and_stop_time(start=box['start'], stop=box['stop'], cfg=cfg)
     elif bpl is not None:
-        time_flux_profile = BPLTimeFluxProfile(t_break=bpl["t_break"], alpha=bpl["alpha"], cfg=cfg)
+        time_flux_profile = BPLTimeFluxProfile(t0=bpl["t0"], dt_break=bpl["dt_break"], alpha=bpl["alpha"], cfg=cfg)
     else:
         raise TypeError('Either gauss or box have to be specified as time pdf.')
 
@@ -1070,7 +1070,7 @@ def create_analysis(
     elif gauss is not None:
         time_flux_profile = GaussianTimeFluxProfile(t0=gauss['mu'], sigma_t=gauss['sigma'], cfg=cfg)
     elif bpl is not None:
-        time_flux_profile = BPLTimeFluxProfile(t_break=bpl['t_break'], alpha=bpl['alpha'], cfg=cfg)
+        time_flux_profile = BPLTimeFluxProfile(t0=bpl["t0"], dt_break=bpl["dt_break"], alpha=bpl["alpha"], cfg=cfg)
 
     # Define the fit parameter ns.
     param_ns = Parameter(name='ns', initial=ns_seed, valmin=ns_min, valmax=ns_max)
