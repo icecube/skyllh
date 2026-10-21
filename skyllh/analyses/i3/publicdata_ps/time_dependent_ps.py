@@ -54,6 +54,7 @@ from skyllh.core.expectation_maximization import (
 from skyllh.core.flux_model import (
     BoxTimeFluxProfile,
     GaussianTimeFluxProfile,
+    BPLTimeFluxProfile,
     PowerLawEnergyFluxProfile,
     SteadyPointlikeFFM,
 )
@@ -148,12 +149,19 @@ from skyllh.i3.scrambling import (
 TXS_0506_PLUS056_SOURCE = PointLikeSource(name='TXS 0506+056', ra=np.deg2rad(77.3581851), dec=np.deg2rad(5.69314828))
 TXS_0506_PLUS056_ALERT_TIME = 58018.8711856
 
+def validate_time_profile_parameters(box, gauss, bpl):
+    if (gauss is None) and (box is None) and (bpl is None):
+        raise ValueError('No time pdf specified (box, gauss, bpl)!')
+    if sum(int(_ is not None) for _ in (box, gauss, bpl)) > 1:
+        raise ValueError('Time PDF got parameters for more than one out of {box, gauss, bpl} . Please specify only one shape.')
+
 
 def create_signal_time_pdf(
     cfg: Config,
     grl: np.ndarray,
     gauss: dict | None = None,
     box: dict | None = None,
+    bpl: dict | None = None,
 ) -> PDF:
     """Creates the signal time PDF, either a gaussian or a box shaped PDF.
 
@@ -167,6 +175,9 @@ def create_signal_time_pdf(
         None or dictionary with {"mu": float, "sigma": float}.
     box
         None or dictionary with {"start": float, "stop": float}.
+    bpl
+        Properties of the BPL time PDF.
+        None of dictionary with {"t_break" [float], "alpha": float}.
 
     Returns
     -------
@@ -180,6 +191,8 @@ def create_signal_time_pdf(
         time_flux_profile = GaussianTimeFluxProfile(t0=gauss['mu'], sigma_t=gauss['sigma'], cfg=cfg)
     elif box is not None:
         time_flux_profile = BoxTimeFluxProfile.from_start_and_stop_time(start=box['start'], stop=box['stop'], cfg=cfg)
+    elif bpl is not None:
+        time_flux_profile = BPLTimeFluxProfile(t_break=bpl["t_break"], alpha=bpl["alpha"], cfg=cfg)
     else:
         raise TypeError('Either gauss or box have to be specified as time pdf.')
 
@@ -196,6 +209,7 @@ def change_signal_time_pdf_of_llhratio_function(
     ana: SingleSourceMultiDatasetLLHRatioAnalysis,
     gauss: dict | None = None,
     box: dict | None = None,
+    bpl: dict | None = None,
 ):
     """Changes the signal time PDF of the log-likelihood ratio function.
 
@@ -207,11 +221,13 @@ def change_signal_time_pdf_of_llhratio_function(
         None or dictionary with {"mu": float, "sigma": float}.
     box
         None or dictionary with {"start": float, "stop": float}.
+    bpl
+        None of dictionary with {"t_break" [float], "alpha": float}.
     """
     cfg = ana.cfg
     grl = ana.data_list[0].grl
 
-    time_sigpdf = create_signal_time_pdf(cfg=cfg, grl=grl, gauss=gauss, box=box)
+    time_sigpdf = create_signal_time_pdf(cfg=cfg, grl=grl, gauss=gauss, box=box, bpl=bpl)
 
     pdfratio = cast(
         ZeroSigH0SingleDatasetTCLLHRatio, cast(MultiDatasetTCLLHRatio, ana.llhratio).llhratio_list[0]
@@ -349,6 +365,48 @@ def calculate_TS(
     return (max_TS, best_em_result, best_fitparam_values)
 
 
+def calculate_TS_fixed_time_pdf(
+    ana: SingleSourceMultiDatasetLLHRatioAnalysis,
+    rss: RandomStateService,
+    box: dict | None = None,
+    gauss: dict | None = None,
+    bpl: dict | None = None,
+) -> tuple[float | None, dict | None, np.ndarray | None]:
+    """Calculate the best TS value from the expectation maximization gamma scan
+    results.
+
+    Parameters
+    ----------
+    ana
+        The analysis that should be used.
+    box
+        Box time profile parameters.
+    gauss
+        Gaussian time profile parameters.
+    bpl
+        BPL lightcurve shape parameters.
+    rss
+        The instance of RandomStateService that should be used to generate
+        random numbers from.
+
+    Returns
+    -------
+    max_TS
+        The maximal TS value given this time hypothesis.
+    best_fitparam_values
+        The instance of numpy ndarray holding the fit parameter values of the
+        overall best fit result.
+    """
+    validate_time_profile_parameters(box, gauss, bpl)
+    change_signal_time_pdf_of_llhratio_function(ana=ana, box=box, gauss=gauss, bpl=bpl)
+
+    (log_lambda_max, fitparam_values, _) = ana.llhratio.maximize(rss=rss)
+
+    TS = ana.calculate_test_statistic(log_lambda=log_lambda_max, fitparam_values=fitparam_values)
+
+    return TS, fitparam_values
+
+
 def run_gamma_scan_for_single_flare(
     ana: SingleSourceMultiDatasetLLHRatioAnalysis,
     remove_time: float | None = None,
@@ -454,6 +512,43 @@ def unblind_single_flare(
     (max_ts, best_em_result, best_fitparam_values) = calculate_TS(ana=ana, em_results=em_results, rss=rss)
 
     return (max_ts, best_em_result, best_fitparam_values)
+
+
+def unblind_single_flare_fixed_time_pdf(
+    ana: SingleSourceMultiDatasetLLHRatioAnalysis,
+    box: dict|None = None,
+    gauss: dict|None = None,
+    bpl: dict|None = None,
+    remove_time: float | None = None,
+) -> tuple[float | None, dict | None, np.ndarray | None]:
+    """Run EM for a single flare on unblinded data.
+    Similar to the original analysis, remove the alert event.
+
+    Parameters
+    ----------
+    ana
+        The analysis that should be used.
+    remove_time
+        Time of the event that should be removed.
+        In the case of the TXS analysis:
+        ``remove_time=TXS_0506_PLUS056_ALERT_TIME``.
+
+    Returns
+    -------
+    max_TS
+        The maximal TS value.
+    best_fitparam_values
+        The instance of numpy ndarray holding the fit parameter values of the
+        overall best fit result.
+    """
+    rss = RandomStateService(seed=1)
+
+    ana.unblind(minimizer_rss=rss)
+
+    (max_ts, best_fitparam_values) = calculate_TS_fixed_time_pdf(ana=ana, rss=rss, box=box, gauss=gauss, bpl=bpl)
+
+    return (max_ts, best_fitparam_values)
+
 
 
 def do_trial_with_em(
@@ -591,6 +686,111 @@ def do_trial_with_em(
 
     return trial
 
+def do_trial_with_fixed_time_profile(
+    ana: SingleSourceMultiDatasetLLHRatioAnalysis,
+    rss: RandomStateService,
+    mean_n_sig: float = 0,
+    gamma_src: float = 2,
+    gamma_min: float = 1,
+    gamma_max: float = 5,
+    n_gamma: int = 21,
+    box: dict | None = None,
+    gauss: dict | None = None,
+    bpl: dict | None = None,
+    tl: TimeLord | None = None,
+    ppbar: ProgressBar | None = None,
+) -> np.ndarray:
+    """Performs a trial using the expectation maximization algorithm.
+    It runs a gamma scan and does the EM for each gamma value.
+
+    Parameters
+    ----------
+    ana
+        The analysis instance that should be used to perform the trial.
+    rss
+        The instance of RandomStateService that should be used to generate
+        random numbers.
+    mean_n_sig
+        The mean number of signal events that should be generated.
+    gamma_src
+        The spectral index of the source.
+    gamma_min
+        Lower bound of the gamma scan.
+    gamma_max
+        Upper bound of the gamma scan.
+    n_gamma
+        Number of steps of the gamma scan.
+    gauss
+        Properties of the Gaussian time PDF.
+        None or dictionary with {"mu": float, "sigma": float}.
+    box
+        Properties of the box time PDF.
+        None or dictionary with {"start": float, "stop": float}.
+    bpl
+        Properties of the BPL time PDF.
+        None of dictionary with {"t_break" [float], "alpha": float}.
+    tl
+        The optional instance of TimeLord to measure timing information.
+    ppbar
+        The optional parent instance of ProgressBar.
+
+    Returns
+    -------
+    trial
+        The numpy structured ndarray of length 1 with the following fields:
+
+        seed
+            The seed value used to generate the trial.
+        mean_n_sig
+            The mean number of signal events of the trial.
+        n_sig
+            The actual number of signal events in the trial.
+        gamma_src
+            The spectral index of the source.
+        ts
+            The test-statistic value of the trial.
+        ns_fit
+            The fitted number of signal events.
+        gamma_fit
+            The fitted spectral index of the trial.
+    """
+    trial_dt = [
+        ('seed', np.int64),
+        ('mean_n_sig', np.float64),
+        ('n_sig', np.int64),
+        ('gamma_src', np.float64),
+        ('ts', np.float64),
+        ('ns_fit', np.float64),
+        ('gamma_fit', np.float64),
+    ]
+
+    trial = np.empty((1,), dtype=trial_dt)
+
+    (n_sig, n_events_list, events_list) = ana.generate_pseudo_data(rss=rss, mean_n_sig=mean_n_sig, tl=tl)
+    ana.initialize_trial(
+        cast(list[DataFieldRecordArray], events_list),
+        cast(list[int | None], n_events_list),
+    )
+
+    (max_ts, best_fitparams) = calculate_TS_fixed_time_pdf(ana=ana, rss=rss, box=box, gauss=gauss, bpl=bpl)
+    assert max_ts is not None
+    assert best_fitparams is not None
+
+    trial[0] = (
+        rss.seed,
+        mean_n_sig,
+        n_sig,
+        gamma_src,
+        gauss['mu'] if gauss is not None else -1,
+        gauss['sigma'] if gauss is not None else -1,
+        box['start'] if box is not None else -1,
+        box['end'] if box is not None else -1,
+        max_ts,
+        best_fitparams[0],
+        best_fitparams[1],
+    )
+
+    return trial
 
 def do_trials_with_em(
     ana: SingleSourceMultiDatasetLLHRatioAnalysis,
@@ -728,6 +928,7 @@ def create_analysis(
     source: PointLikeSource,
     box=None,
     gauss=None,
+    bpl=None,
     refplflux_Phi0: float = 1,
     refplflux_E0: float = 1e3,
     refplflux_gamma: float = 2.0,
@@ -765,6 +966,9 @@ def create_analysis(
     gauss
         None if no gaussian time pdf, else dictionary of the format
         ``{'mu': float, 'sigma': float}``.
+    bpl
+        None if no BPL time PDF, else dictionary of the forat
+        ``{'break': [float], 'alpha': [float]}
     refplflux_Phi0
         The flux normalization to use for the reference power law flux model.
     refplflux_E0
@@ -832,11 +1036,8 @@ def create_analysis(
     if len(datasets) != 1:
         raise RuntimeError('This analysis supports only analyses with only single datasets at the moment!')
 
-    if (gauss is None) and (box is None):
-        raise ValueError('No time pdf specified (box or gauss)!')
-    if (gauss is not None) and (box is not None):
-        raise ValueError('Time PDF cannot be both gaussian and box shaped. Please specify only one shape.')
-
+    validate_time_profile_parameters(box, bpl, gauss)
+    
     # Create the minimizer instance.
     if minimizer_impl == 'LBFGS':
         minimizer = Minimizer(LBFGSMinimizerImpl(cfg=cfg))
@@ -868,6 +1069,8 @@ def create_analysis(
         time_flux_profile = BoxTimeFluxProfile.from_start_and_stop_time(start=box['start'], stop=box['stop'], cfg=cfg)
     elif gauss is not None:
         time_flux_profile = GaussianTimeFluxProfile(t0=gauss['mu'], sigma_t=gauss['sigma'], cfg=cfg)
+    elif bpl is not None:
+        time_flux_profile = BPLTimeFluxProfile(t_break=bpl['t_break'], alpha=bpl['alpha'], cfg=cfg)
 
     # Define the fit parameter ns.
     param_ns = Parameter(name='ns', initial=ns_seed, valmin=ns_min, valmax=ns_max)
@@ -986,7 +1189,7 @@ def create_analysis(
                     start=livetime.time_start, stop=livetime.time_stop, cfg=cfg
                 ),
             )
-            time_sigpdf = create_signal_time_pdf(cfg=cfg, grl=cast(np.ndarray, data.grl), gauss=gauss, box=box)
+            time_sigpdf = create_signal_time_pdf(cfg=cfg, grl=cast(np.ndarray, data.grl), gauss=gauss, box=box, bpl=bpl)
             time_pdfratio = SigOverBkgPDFRatio(
                 cfg=cfg,
                 sig_pdf=time_sigpdf,
