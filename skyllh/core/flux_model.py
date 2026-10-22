@@ -1928,11 +1928,12 @@ class BPLTimeFluxProfile(
             If set to ``None``, the configured default time unit for fluxes is
             used.
         """
-        # segments in absolute time that define the time profile
-        self._t_bin = t0 + np.append(0, dt_break) 
+        alpha = np.array(alpha, dtype=np.float64)
+        # segments in relative time that define the time profile
+        self._dt_bin = np.append(0, dt_break) 
 
         # Using Pareto PDF: b / (x^(b+1)) defined for x>=1, b>0.
-        loc = self._t_bin - 1
+        loc = self._dt_bin - 1
         b = alpha - 1
         # For each segment it's defined for t>=t_break
         # (i.e. x >= 1 where x=(t - t_break + 1))
@@ -1942,12 +1943,12 @@ class BPLTimeFluxProfile(
         # can determine these iteratively by extrapolating one segment to its upper edge
         norm = np.ones_like(alpha)
         for i, _pl in enumerate(self._pl[:-1]):
-            norm[i+1:] *= _pl.pdf(self._t_bin[i + 1]) / (alpha[i + 1] - 1)
+            norm[i+1:] *= _pl.pdf(self._dt_bin[i + 1]) / (alpha[i + 1] - 1)
         self._norm = norm
 
         # each profile has a start and stop for numerical purposes
         t_start = t0
-        t_stop = self._pl[-1].isf(tol / self._norm[-1])
+        t_stop = t0 + self._pl[-1].isf(tol / self._norm[-1])
 
         super().__init__(t_start=t_start, t_stop=t_stop, time_unit=time_unit, **kwargs)
 
@@ -1965,12 +1966,12 @@ class BPLTimeFluxProfile(
         self.alpha = alpha
 
     
-    # @property
-    # def math_function_str(self):
-    #     """The string representation of the mathematical function of this time
-    #     flux profile.
-    #     """
-    #     return 'exp(-(t-t0)^2/(2 sigma_t^2))'
+    @property
+    def math_function_str(self):
+        """The string representation of the mathematical function of this time
+        flux profile.
+        """
+        return '(t / unit)^-alpha_i in segment [t0 + dt_break[i-1], t0 + dt_break[i]]'
 
     @property
     def t0(self):
@@ -2040,12 +2041,12 @@ class BPLTimeFluxProfile(
         m = (t >= self.t_start) & (t < self.t_stop)
         
         values = np.zeros(t.size, dtype=np.float64)
-        i_bin = np.digitize(t, self._t_bin) - 1 # time segment each time falls in
+        i_bin = np.digitize(t - self.t0, self._dt_bin) - 1 # time segment each time falls in
         # can use np.split if the times are sorted
         for i_segment in range(self.alpha.size):
             # evaluate the PDF for the corresponding segment
             _mask = (i_bin == i_segment) & m
-            values[_mask] = self._norm[i_segment] * self._pl[i_segment].pdf(t[_mask])
+            values[_mask] = self._norm[i_segment] * self._pl[i_segment].pdf(t[_mask] - self.t0)
         
         return values
 
@@ -2113,14 +2114,14 @@ class BPLTimeFluxProfile(
 
         self._t_start += dt
         self._t_stop += dt
-        self._t_bin += dt
 
     def _clamp(self, t, i_segment):
-        """Clamp the time(s) `t` to the segment of the time profile."""
-        _t = np.maximum(t, self._t_bin[i_segment])
-        if i_segment != self._t_bin.size - 1:
-            _t = np.minimum(_t, self._t_bin[i_segment + 1])
-        return _t
+        """Clamp the absolute time(s) `t` to the segment of the relative time profile."""
+        dt = t - self.t0
+        _dt = np.maximum(dt, self._dt_bin[i_segment])
+        if i_segment != self._dt_bin.size - 1:
+            _dt = np.minimum(_dt, self._dt_bin[i_segment + 1])
+        return _dt
 
     def get_integral(
         self,
@@ -2157,9 +2158,9 @@ class BPLTimeFluxProfile(
         # integrate within each segment
         # (if there's an overlap)
         for i_segment, _pl in enumerate(self._pl):
-            _t1 = self._clamp(t1, i_segment)
-            _t2 = self._clamp(t2, i_segment)
-            integral += self._norm[i_segment] * (_pl.cdf(_t2) - _pl.cdf(_t1))
+            _dt1 = self._clamp(t1, i_segment)
+            _dt2 = self._clamp(t2, i_segment)
+            integral += self._norm[i_segment] * (_pl.cdf(_dt2) - _pl.cdf(_dt1))
         
         return integral
 
