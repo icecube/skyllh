@@ -1952,18 +1952,14 @@ class BPLTimeFluxProfile(
 
         super().__init__(t_start=t_start, t_stop=t_stop, time_unit=time_unit, **kwargs)
 
-        # Define the parameters which can be set via the `set_params`
-        # method.
-        param_names = ["t0"]
-        for i, _ in enumerate(dt_break):
-            param_names.append(f"dt_break_{i}")
-        for i, _ in enumerate(alpha):
-            param_names.append(f"alpha_{i}")
-        self.param_names = tuple(param_names) # FIXME set_params does nothing with these yet
         # set additional parameters via properties
         # (t0 is already set via tstart)
         self.dt_break = dt_break
         self.alpha = alpha
+
+        # Define the parameters which can be set via the `set_params`
+        # method.
+        self.param_names = ("t0", "dt_break", "alpha")
 
     
     @property
