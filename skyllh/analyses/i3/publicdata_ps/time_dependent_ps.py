@@ -365,7 +365,7 @@ def calculate_TS(
     return (max_TS, best_em_result, best_fitparam_values)
 
 
-def calculate_TS_fixed_time_pdf(
+def calculate_TS_fixed_time_profile(
     ana: SingleSourceMultiDatasetLLHRatioAnalysis,
     rss: RandomStateService,
     box: dict | None = None,
@@ -514,7 +514,7 @@ def unblind_single_flare(
     return (max_ts, best_em_result, best_fitparam_values)
 
 
-def unblind_single_flare_fixed_time_pdf(
+def unblind_single_flare_fixed_time_profile(
     ana: SingleSourceMultiDatasetLLHRatioAnalysis,
     box: dict|None = None,
     gauss: dict|None = None,
@@ -545,7 +545,7 @@ def unblind_single_flare_fixed_time_pdf(
 
     ana.unblind(minimizer_rss=rss)
 
-    (max_ts, best_fitparam_values) = calculate_TS_fixed_time_pdf(ana=ana, rss=rss, box=box, gauss=gauss, bpl=bpl)
+    (max_ts, best_fitparam_values) = calculate_TS_fixed_time_profile(ana=ana, rss=rss, box=box, gauss=gauss, bpl=bpl)
 
     return (max_ts, best_fitparam_values)
 
@@ -772,7 +772,7 @@ def do_trial_with_fixed_time_profile(
         cast(list[int | None], n_events_list),
     )
 
-    (max_ts, best_fitparams) = calculate_TS_fixed_time_pdf(ana=ana, rss=rss, box=box, gauss=gauss, bpl=bpl)
+    (max_ts, best_fitparams) = calculate_TS_fixed_time_profile(ana=ana, rss=rss, box=box, gauss=gauss, bpl=bpl)
     assert max_ts is not None
     assert best_fitparams is not None
 
