@@ -278,7 +278,7 @@ def create_dataset_collection(
 
     # Define the origin of the dataset.
     origin = DatasetOrigin(
-        url='https://dataverse.harvard.edu/api/access/dataset/:persistentId/versions/2.0?persistentId=doi:10.7910/DVN/VKL316',
+        url='https://dataverse.harvard.edu/api/access/dataset/:persistentId/versions/2.0?persistentId=doi:10.7910/DVN/VKL316&format=original',
         base_path='',
         sub_path='icecube_10year_ps',
         filename='tmp.zip',

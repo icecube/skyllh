@@ -67,7 +67,7 @@ def create_dataset_collection(
         ds.default_sub_path_fmt = default_sub_path_fmt
         ds.origin = DatasetOrigin(
             url='https://dataverse.harvard.edu/api/access/dataset/:persistentId/versions/2.0'
-            '?persistentId=doi:10.7910/DVN/MMIIZA',
+            '?persistentId=doi:10.7910/DVN/MMIIZA&format=original',
             base_path='',
             sub_path=default_sub_path_fmt,
             filename='tmp.zip',
