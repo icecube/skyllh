@@ -31,6 +31,25 @@ from skyllh.datasets.i3.PublicData_10y_ps import (
 )
 
 
+def transfer_function(origin, file_list, dst_base_path, username=None, password=None):
+    pass
+
+
+class TestDatasetOrigin(unittest.TestCase):
+    def test_str_shows_transfer_class(self):
+        origin = DatasetOrigin(
+            host='data.mydomain.com',
+            base_path='/downloads/data',
+            sub_path='my_dataset',
+            transfer_func=WGETDatasetTransfer(protocol='https').transfer,
+        )
+        self.assertIn('transfer class = WGETDatasetTransfer', str(origin))
+
+    def test_str_shows_transfer_function(self):
+        origin = DatasetOrigin(base_path='/downloads/data', sub_path='my_dataset', transfer_func=transfer_function)
+        self.assertIn('transfer class = transfer_function', str(origin))
+
+
 class TestRSYNCDatasetTransfer(unittest.TestCase):
     def setUp(self):
         self.cfg = Config()
