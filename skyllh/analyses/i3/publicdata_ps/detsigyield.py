@@ -150,11 +150,17 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         aeff_fnames = dataset.get_abs_pathfilename_list(dataset.get_aux_data_definition('eff_area_datafile'))
         (
             aeff_arr,
-            sin_true_dec_binedges_lower,
-            sin_true_dec_binedges_upper,
+            true_dec_binedges_lower,
+            true_dec_binedges_upper,
             log_true_e_binedges_lower,
             log_true_e_binedges_upper,
         ) = load_effective_area_array(aeff_fnames)
+
+        # The effective area declination bin edges are given in radians, but
+        # the detector signal yield spline is defined in sin(dec), because it
+        # gets evaluated at sin(dec) of the source.
+        sin_true_dec_binedges_lower = np.sin(true_dec_binedges_lower)
+        sin_true_dec_binedges_upper = np.sin(true_dec_binedges_upper)
 
         # Calculate the detector signal yield in sin_dec vs gamma.
         def _create_hist(
