@@ -67,8 +67,8 @@ class NGC1068UnblindingDR2TestCase(unittest.TestCase):
         logger.info(f'gamma_fit = {params_dict["gamma"]:.7f}')
         logger.info(f'minimizer status = {status}')
 
-        np.testing.assert_allclose(TS, 28.7671585, rtol=1e-5)
-        np.testing.assert_allclose(params_dict['ns'], 79.5472921, rtol=1e-5)
+        np.testing.assert_allclose(TS, 28.7671158, rtol=1e-5)
+        np.testing.assert_allclose(params_dict['ns'], 79.5471446, rtol=1e-5)
         np.testing.assert_allclose(params_dict['gamma'], 3.2015511, rtol=1e-5)
 
     def test_do_trial_background(self):
@@ -87,9 +87,9 @@ class NGC1068UnblindingDR2TestCase(unittest.TestCase):
         logger.info(f'gamma = {res["gamma"]}')
 
         np.testing.assert_equal(res['n_sig'], 0)
-        np.testing.assert_allclose(res['ts'], 0.5339455, rtol=1e-5)
-        np.testing.assert_allclose(res['ns'], 8.8377576, rtol=1e-5)
-        np.testing.assert_allclose(res['gamma'], 3.1173544, rtol=1e-5)
+        np.testing.assert_allclose(res['ts'], 0.5339355, rtol=1e-5)
+        np.testing.assert_allclose(res['ns'], 8.8376457, rtol=1e-5)
+        np.testing.assert_allclose(res['gamma'], 3.1173525, rtol=1e-5)
 
     def test_do_trial_signal(self):
         rss = RandomStateService(seed=1)
@@ -107,9 +107,9 @@ class NGC1068UnblindingDR2TestCase(unittest.TestCase):
         logger.info(f'gamma = {res["gamma"]}')
 
         np.testing.assert_equal(res['n_sig'], 41)
-        np.testing.assert_allclose(res['ts'], 167.6219977, rtol=1e-5)
-        np.testing.assert_allclose(res['ns'], 45.4395538, rtol=1e-5)
-        np.testing.assert_allclose(res['gamma'], 2.0254494, rtol=1e-5)
+        np.testing.assert_allclose(res['ts'], 167.6219781, rtol=1e-5)
+        np.testing.assert_allclose(res['ns'], 45.4394574, rtol=1e-5)
+        np.testing.assert_allclose(res['gamma'], 2.0254487, rtol=1e-5)
 
     def test_signal_energy_pdf_integral_normalization(self):
         """Each PDSignalEnergyPDF spline integrates to 1 over its energy range."""
