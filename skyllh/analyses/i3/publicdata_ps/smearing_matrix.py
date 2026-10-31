@@ -320,7 +320,7 @@ class PDSmearingMatrix:
             The index of the declination bin for the given declination value.
         """
         if (true_dec < self.true_dec_bin_edges[0]) or (true_dec > self.true_dec_bin_edges[-1]):
-            raise ValueError(f'The declination {true_dec} degrees is not supported by the smearing matrix!')
+            raise ValueError(f'The declination {true_dec} radians is not supported by the smearing matrix!')
 
         true_dec_idx = np.digitize(true_dec, self.true_dec_bin_edges) - 1
 
@@ -775,7 +775,7 @@ class PDSmearingMatrix:
         ang_err
             The sampled angular error values in radians.
         """
-        if (len(log_true_e_idxs) != len(log_e_idxs)) and (len(log_e_idxs) != len(psi_idxs)):
+        if (len(log_true_e_idxs) != len(log_e_idxs)) or (len(log_e_idxs) != len(psi_idxs)):
             raise ValueError('The lengths of log_true_e_idxs, log_e_idxs, and psi_idxs must be equal!')
 
         n_evt = len(log_true_e_idxs)
