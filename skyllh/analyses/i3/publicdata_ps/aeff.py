@@ -4,9 +4,6 @@ from typing import cast
 import numpy as np
 from scipy import interpolate
 
-from skyllh.analyses.i3.publicdata_ps.utils import (
-    FctSpline2D,
-)
 from skyllh.core.binning import (
     get_bin_indices_from_lower_and_upper_binedges,
     get_bincenters_from_binedges,
@@ -240,20 +237,6 @@ class PDAeff:
         2D numpy ndarray.
         """
         return self._aeff_decnu_log10enu
-
-    def create_sin_decnu_log10_enu_spline(self) -> FctSpline2D:
-        """DEPRECATED!
-        Creates a FctSpline2D object representing a 2D spline of the
-        effective area in sin(dec_nu)-log10(E_nu/GeV)-space.
-
-        Returns
-        -------
-        spl
-            The FctSpline2D instance representing a spline in the
-            sin(dec_nu)-log10(E_nu/GeV)-space.
-        """
-        spl = FctSpline2D(self._aeff_decnu_log10enu, self.sin_decnu_binedges, self.log10_enu_binedges)
-        return spl
 
     def get_aeff_for_decnu(self, decnu: float) -> np.ndarray:
         """Retrieves the effective area as function of log10_enu.
