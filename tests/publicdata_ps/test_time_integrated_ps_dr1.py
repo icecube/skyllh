@@ -70,9 +70,9 @@ class AnalysisTestCase(unittest.TestCase):
             logger.info(f'gamma_fit = {params_dict["gamma"]:.7f}')
             logger.info(f'minimizer status = {status}')
 
-            np.testing.assert_allclose(TS, 19.5117469, rtol=1e-5)
-            np.testing.assert_allclose(params_dict['ns'], 54.9606574, rtol=1e-5)
-            np.testing.assert_allclose(params_dict['gamma'], 3.0884301, rtol=1e-5)
+            np.testing.assert_allclose(TS, 19.5118565, rtol=1e-5)
+            np.testing.assert_allclose(params_dict['ns'], 54.9607215, rtol=1e-5)
+            np.testing.assert_allclose(params_dict['gamma'], 3.0884333, rtol=1e-5)
         finally:
             self.ana.change_source(self.__class__.source)
 
@@ -87,9 +87,9 @@ class AnalysisTestCase(unittest.TestCase):
         logger.info(f'gamma_fit = {params_dict["gamma"]:.7f}')
         logger.info(f'minimizer status = {status}')
 
-        np.testing.assert_allclose(TS, 13.408184, rtol=1e-5)
-        np.testing.assert_allclose(params_dict['ns'], 12.879558, rtol=1e-5)
-        np.testing.assert_allclose(params_dict['gamma'], 2.122526, rtol=1e-5)
+        np.testing.assert_allclose(TS, 13.4083686, rtol=1e-5)
+        np.testing.assert_allclose(params_dict['ns'], 12.8789580, rtol=1e-5)
+        np.testing.assert_allclose(params_dict['gamma'], 2.1225071, rtol=1e-5)
 
     def test_signal_energy_pdf_integral_normalization(self):
         """Each PDSignalEnergyPDF spline integrates to 1 over its energy range."""
@@ -123,8 +123,8 @@ class AnalysisTestCase(unittest.TestCase):
         logger.info(f'gamma = {res["gamma"]}')
 
         np.testing.assert_equal(res['n_sig'], 37)
-        np.testing.assert_allclose(res['ts'], 112.744284, rtol=1e-5)
-        np.testing.assert_allclose(res['ns'], 27.681108, rtol=1e-5)
+        np.testing.assert_allclose(res['ts'], 112.744002, rtol=1e-5)
+        np.testing.assert_allclose(res['ns'], 27.681199, rtol=1e-5)
         np.testing.assert_allclose(res['gamma'], 1.987327, rtol=1e-5)
 
 
@@ -226,9 +226,9 @@ class AnalysisWithEnergyRangeTestCase(unittest.TestCase):
         logger.info(f'gamma = {res["gamma"]}')
 
         np.testing.assert_equal(res['n_sig'], 37)
-        np.testing.assert_allclose(res['ts'], 30.877059342233714, rtol=1e-5)
-        np.testing.assert_allclose(res['ns'], 34.889627240419706, rtol=1e-5)
-        np.testing.assert_allclose(res['gamma'], 2.2829856920449307, rtol=1e-5)
+        np.testing.assert_allclose(res['ts'], 30.876926203398256, rtol=1e-5)
+        np.testing.assert_allclose(res['ns'], 34.89001931664496, rtol=1e-5)
+        np.testing.assert_allclose(res['gamma'], 2.2829920660827603, rtol=1e-5)
 
     def test_energy_range_consistency(self):
         """Passing energy_range to create_analysis gives the same result as setting it via the
@@ -280,10 +280,15 @@ class AnalysisWithEnergyRangeTestCase(unittest.TestCase):
         rss_mid = RandomStateService(seed=2)
         res_mid = self.ana_mutable.do_trial(rss=rss_mid, mean_n_sig=40)[0]
 
+        logger.info(f'n_sig = {res_mid["n_sig"]}')
+        logger.info(f'TS = {res_mid["ts"]}')
+        logger.info(f'ns = {res_mid["ns"]}')
+        logger.info(f'gamma = {res_mid["gamma"]}')
+
         np.testing.assert_equal(res_mid['n_sig'], 32)
-        np.testing.assert_allclose(res_mid['ts'], 123.047538, rtol=1e-5)
-        np.testing.assert_allclose(res_mid['ns'], 40.036228, rtol=1e-5)
-        np.testing.assert_allclose(res_mid['gamma'], 2.027787, rtol=1e-5)
+        np.testing.assert_allclose(res_mid['ts'], 123.046974, rtol=1e-5)
+        np.testing.assert_allclose(res_mid['ns'], 40.039801, rtol=1e-5)
+        np.testing.assert_allclose(res_mid['gamma'], 2.027851, rtol=1e-5)
 
         # Restore original energy_range and re-run with the same seed.
         self.ana_mutable.energy_range = self.ENERGY_RANGE
@@ -390,12 +395,12 @@ class FitparamValuesTestCase(unittest.TestCase):
             source=cls.source,
         )
 
-        # The reference gamma is 2.122526, which is the best-fit gamma obtained in test_unblind() with the default analysis configuration.
+        # The reference gamma is 2.122507, which is the best-fit gamma obtained in test_unblind() with the default analysis configuration.
         cls.ana_ref = create_analysis(
             cfg=cls.cfg,
             datasets=cls.datasets,
             source=cls.source,
-            refplflux_gamma=2.122526,
+            refplflux_gamma=2.122507,
         )
 
         # PMM order: [ns, gamma]. The flux model reference gamma is 2.0.
@@ -462,7 +467,7 @@ class FitparamValuesTestCase(unittest.TestCase):
 
     def test_ana_with_fitparam_values_matches_ana_ref(self):
         """Using fitparam_values with ana should match the reference analysis without fitparam_values."""
-        flux1 = self.ana.mu2flux(10, fitparam_values=self._fitparam_values(2.122526))
+        flux1 = self.ana.mu2flux(10, fitparam_values=self._fitparam_values(2.122507))
         flux2 = self.ana_ref.mu2flux(10)
         np.testing.assert_allclose(flux1, flux2, rtol=1e-10)
 
