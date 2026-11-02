@@ -65,9 +65,13 @@ def create_dataset_collection(
         ds = dsc.get_dataset(name)
         ds.version = version
         ds.default_sub_path_fmt = default_sub_path_fmt
+        # Update the origin of the dataset.
+        # The `url` is constructed to download all dataset files as a zip archive, see:
+        # https://guides.dataverse.org/en/latest/api/dataaccess.html
+        # Without `format=original`, Dataverse returns ingested .tab files instead of the originally uploaded files.
         ds.origin = DatasetOrigin(
             url='https://dataverse.harvard.edu/api/access/dataset/:persistentId/versions/2.0'
-            '?persistentId=doi:10.7910/DVN/MMIIZA',
+            '?persistentId=doi:10.7910/DVN/MMIIZA&format=original',
             base_path='',
             sub_path=default_sub_path_fmt,
             filename='tmp.zip',

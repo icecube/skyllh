@@ -245,8 +245,11 @@ def create_dataset_collection(
     """
 
     # Define the origin of the dataset.
+    # The `url` is constructed to download all dataset files as a zip archive, see:
+    # https://guides.dataverse.org/en/latest/api/dataaccess.html
+    # Without `format=original`, Dataverse returns ingested .tab files instead of the originally uploaded files.
     origin = DatasetOrigin(
-        url='https://dataverse.harvard.edu/api/access/dataset/:persistentId/versions/1.0?persistentId=doi:10.7910/DVN/MMIIZA',
+        url='https://dataverse.harvard.edu/api/access/dataset/:persistentId/versions/1.0?persistentId=doi:10.7910/DVN/MMIIZA&format=original',
         base_path='',
         sub_path='icecube_14year_ps',
         filename='tmp.zip',
