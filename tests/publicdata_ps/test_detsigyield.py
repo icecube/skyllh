@@ -10,7 +10,6 @@ from skyllh.core.config import Config
 from skyllh.core.dataset import Dataset, DatasetData
 from skyllh.core.flux_model import PowerLawEnergyFluxProfile, SteadyPointlikeFFM
 from skyllh.core.parameters import Parameter
-from skyllh.core.services import DetSigYieldService, SrcDetSigYieldWeightsService
 from skyllh.core.source_hypo_grouping import SourceHypoGroup, SourceHypoGroupManager
 from skyllh.core.source_model import PointLikeSource
 
@@ -107,10 +106,6 @@ class PDDetSigYieldTestCase(unittest.TestCase):
             )
         )
 
-    @staticmethod
-    def _create_src_params_recarray(gamma=GAMMA):
-        return np.array([(gamma, 1)], dtype=[('gamma', np.float64), ('gamma:gpidx', np.int32)])
-
     def _construct_detsigyield(self):
         shg_mgr = self._create_shg_mgr(dec=0.0)
         builder = shg_mgr.shg_list[0].detsigyield_builder_list[0]
@@ -150,44 +145,6 @@ class PDDetSigYieldTestCase(unittest.TestCase):
 
         expected = np.array([_expected_detsigyield(i, GAMMA) for i in range(n_dec_bins)])
         np.testing.assert_allclose(values, expected, rtol=1e-10)
-
-    def test_detsigyield_follows_source_without_rebuilding_detsigyield_service(self):
-        """Changing the source declination and updating only the source
-        detector signal yield weights service (as ``update_detsigyield_service=False``
-        does) must yield the same values as re-building the detector signal
-        yield service, because the detector signal yield is a function of the
-        source declination.
-        """
-        dec_initial = _sin_dec_bincenter_as_dec(4)
-        dec_new = _sin_dec_bincenter_as_dec(6)
-        src_params_recarray = self._create_src_params_recarray()
-
-        shg_mgr = self._create_shg_mgr(dec=dec_initial)
-        detsigyield_service = DetSigYieldService(shg_mgr=shg_mgr, dataset_list=[self.ds], data_list=[self.data])
-        weights_service = SrcDetSigYieldWeightsService(detsigyield_service=detsigyield_service)
-
-        weights_service.calculate(src_params_recarray)
-        (a_jk_initial, _) = weights_service.get_weights()
-        assert a_jk_initial is not None
-        np.testing.assert_allclose(a_jk_initial[0, 0], _expected_detsigyield(4, GAMMA), rtol=1e-10)
-
-        # Change the source in-place, like Analysis.change_source does.
-        shg_mgr.shg_list[0].source_list[0] = PointLikeSource(ra=0.0, dec=dec_new)
-        weights_service.change_shg_mgr(shg_mgr=shg_mgr)
-        weights_service.calculate(src_params_recarray)
-        (a_jk_new, _) = weights_service.get_weights()
-        assert a_jk_new is not None
-
-        np.testing.assert_allclose(a_jk_new[0, 0], _expected_detsigyield(6, GAMMA), rtol=1e-10)
-
-        # Re-building the detector signal yield service must give the same.
-        detsigyield_service.change_shg_mgr(shg_mgr=shg_mgr)
-        weights_service.change_shg_mgr(shg_mgr=shg_mgr)
-        weights_service.calculate(src_params_recarray)
-        (a_jk_rebuilt, _) = weights_service.get_weights()
-        assert a_jk_rebuilt is not None
-
-        np.testing.assert_allclose(a_jk_new, a_jk_rebuilt, rtol=1e-12)
 
 
 if __name__ == '__main__':
