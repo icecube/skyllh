@@ -49,6 +49,7 @@ from skyllh.core.py import (
     list_of_cast,
     module_class_method_name,
     str_cast,
+    typename,
 )
 from skyllh.core.storage import (
     DataFieldRecordArray,
@@ -301,7 +302,11 @@ class DatasetOrigin:
             s1 += 'set\n'
         else:
             s1 += 'not set\n'
-        s1 += f'transfer class = {classname(transfer_cls)}\n'
+        if transfer_cls is not None:
+            transfer_name = typename(transfer_cls)
+        else:
+            transfer_name = getattr(self.transfer_func, '__qualname__', classname(self.transfer_func))
+        s1 += f'transfer class = {transfer_name}\n'
         s += display.add_leading_text_line_padding(display.INDENTATION_WIDTH, s1)
         s += '}'
 
