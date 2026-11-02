@@ -277,6 +277,9 @@ def create_dataset_collection(
     """
 
     # Define the origin of the dataset.
+    # The `url` is constructed to download all dataset files as a zip archive, see:
+    # https://guides.dataverse.org/en/latest/api/dataaccess.html
+    # Without `format=original`, Dataverse returns ingested .tab files instead of the originally uploaded files.
     origin = DatasetOrigin(
         url='https://dataverse.harvard.edu/api/access/dataset/:persistentId/versions/2.0?persistentId=doi:10.7910/DVN/VKL316&format=original',
         base_path='',
