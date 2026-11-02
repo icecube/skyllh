@@ -70,11 +70,47 @@ class AnalysisTestCase(unittest.TestCase):
             logger.info(f'gamma_fit = {params_dict["gamma"]:.7f}')
             logger.info(f'minimizer status = {status}')
 
-            np.testing.assert_allclose(TS, 19.5117469, rtol=1e-5)
-            np.testing.assert_allclose(params_dict['ns'], 54.9606574, rtol=1e-5)
-            np.testing.assert_allclose(params_dict['gamma'], 3.0884301, rtol=1e-5)
+            np.testing.assert_allclose(TS, 19.3788108, rtol=1e-5)
+            np.testing.assert_allclose(params_dict['ns'], 54.7526977, rtol=1e-5)
+            np.testing.assert_allclose(params_dict['gamma'], 3.1622546, rtol=1e-5)
         finally:
             self.ana.change_source(self.__class__.source)
+
+    def test_change_source_matches_fresh_analysis(self):
+        """Changing the source gives the same fit as an analysis created for that source. The declinations are in
+        different smearing matrix bins than the one of the analysis source.
+        """
+        for dec in (-40.0, 45.0):
+            source = PointLikeSource(name='source', ra=np.radians(200.0), dec=np.radians(dec), weight=1)
+            fresh_ana = create_analysis(cfg=self.cfg, datasets=self.datasets, source=source)
+
+            self.ana.change_source(source)
+            try:
+                (TS, params_dict, _) = self.ana.unblind(minimizer_rss=RandomStateService(seed=1))
+                (fresh_TS, fresh_params_dict, _) = fresh_ana.unblind(minimizer_rss=RandomStateService(seed=1))
+
+                np.testing.assert_allclose(TS, fresh_TS, rtol=1e-9, atol=1e-9)
+                np.testing.assert_allclose(params_dict['ns'], fresh_params_dict['ns'], rtol=1e-9, atol=1e-9)
+                np.testing.assert_allclose(params_dict['gamma'], fresh_params_dict['gamma'], rtol=1e-9)
+            finally:
+                self.ana.change_source(self.__class__.source)
+
+    def test_change_source_reuses_signal_energy_pdfs(self):
+        """The signal energy PDFs of an already visited declination are not created again."""
+        sig_pdf_sets = [pdfratio.pdfratio2.sig_pdf_set for pdfratio in self.ana._pdfratio_list]
+        pdfs_before = [list(sig_pdf_set.values()) for sig_pdf_set in sig_pdf_sets]
+
+        source = PointLikeSource(name='source', ra=np.radians(200.0), dec=np.radians(-40.0), weight=1)
+        self.ana.change_source(source)
+        try:
+            for sig_pdf_set, pdfs in zip(sig_pdf_sets, pdfs_before, strict=True):
+                self.assertIsNot(next(iter(sig_pdf_set.values())), pdfs[0])
+        finally:
+            self.ana.change_source(self.__class__.source)
+
+        for sig_pdf_set, pdfs in zip(sig_pdf_sets, pdfs_before, strict=True):
+            for pdf, pdf_before in zip(sig_pdf_set.values(), pdfs, strict=True):
+                self.assertIs(pdf, pdf_before)
 
     def test_unblind(self):
         rss = RandomStateService(seed=1)

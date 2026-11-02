@@ -528,6 +528,19 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
             )
         self._pdfratio = r
 
+    def change_shg_mgr(self, shg_mgr: SourceHypoGroupManager):
+        """Changes the source hypothesis group manager of this two-component LLH
+        ratio function and of its PDF ratio.
+
+        Parameters
+        ----------
+        shg_mgr
+            The new instance of SourceHypoGroupManager.
+        """
+        super().change_shg_mgr(shg_mgr=shg_mgr)
+
+        self._pdfratio.change_shg_mgr(shg_mgr=shg_mgr)
+
     def initialize_for_new_trial(self, tl: TimeLord | None = None, **kwargs):
         """Initializes the log-likelihood ratio function for a new trial.
         It calls the

@@ -243,6 +243,56 @@ class PDSignalEnergyPDFSet(  # pyright: ignore[reportIncompatibleMethodOverride]
                 pathfilenames=ds.get_abs_pathfilename_list(ds.get_aux_data_definition('smearing_datafile'))
             )
 
+        self._ds = ds
+        self._fluxmodel = fluxmodel
+        self._sm = sm
+        self._aeff = PDAeff(pathfilenames=ds.get_abs_pathfilename_list(ds.get_aux_data_definition('eff_area_datafile')))
+
+        # The PDFs depend on the source declination only through its smearing matrix and effective area declination
+        # bins. So the PDFs of each visited pair of bins are kept to make repeated source changes cheap.
+        self._gridparams_hash_pdf_dict_by_dec_bins: dict[tuple[int, int], dict] = {}
+        self._dec_bins: tuple[int, int] | None = None
+
+        self.change_src_dec(src_dec, ppbar=ppbar)
+
+    def change_src_dec(self, src_dec: float, ppbar: ProgressBar | None = None):
+        """Changes the source declination of this PDF set. The PDFs are created only if the given declination falls
+        into a pair of smearing matrix and effective area declination bins that has not been visited yet.
+
+        Parameters
+        ----------
+        src_dec
+            The declination of the source in radians.
+        ppbar
+            The instance of ProgressBar for the optional parent progress bar.
+        """
+        dec_bins = (self._sm.get_true_dec_idx(src_dec), self._aeff.get_decnu_idx(src_dec))
+        if dec_bins == self._dec_bins:
+            return
+
+        if dec_bins not in self._gridparams_hash_pdf_dict_by_dec_bins:
+            self._gridparams_hash_pdf_dict = {}
+            self._create_pdfs(src_dec=src_dec, ppbar=ppbar)
+            self._gridparams_hash_pdf_dict_by_dec_bins[dec_bins] = self._gridparams_hash_pdf_dict
+
+        self._gridparams_hash_pdf_dict = self._gridparams_hash_pdf_dict_by_dec_bins[dec_bins]
+        self._dec_bins = dec_bins
+
+    def _create_pdfs(self, src_dec: float, ppbar: ProgressBar | None = None):
+        """Creates the energy PDFs for the given source declination and adds them to this PDF set.
+
+        Parameters
+        ----------
+        src_dec
+            The declination of the source in radians.
+        ppbar
+            The instance of ProgressBar for the optional parent progress bar.
+        """
+        ds = self._ds
+        fluxmodel = self._fluxmodel
+        sm = self._sm
+        aeff = self._aeff
+
         # Select the slice of the smearing matrix corresponding to the
         # source declination band.
         true_dec_idx = sm.get_true_dec_idx(src_dec)
@@ -272,9 +322,6 @@ class PDSignalEnergyPDFSet(  # pyright: ignore[reportIncompatibleMethodOverride]
         # Calculate the neutrino enegry bin widths in GeV.
         d_enu = np.diff(true_enu_binedges)
         self._logger.debug(f'dE_nu = {d_enu}')
-
-        # Load the effective area.
-        aeff = PDAeff(pathfilenames=ds.get_abs_pathfilename_list(ds.get_aux_data_definition('eff_area_datafile')))
 
         # Calculate the probability to detect a neutrino of energy
         # E_nu given a neutrino declination: p(E_nu|dec).
