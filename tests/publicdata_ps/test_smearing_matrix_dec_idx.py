@@ -45,5 +45,31 @@ class GetTrueDecIdxTestCase(unittest.TestCase):
             self.sm.get_true_dec_idx(-np.pi / 2 - 1e-6)
 
 
+class GetLog10TrueEIdxTestCase(unittest.TestCase):
+    """Tests for PDSmearingMatrix.get_log10_true_e_idx at the range edges."""
+
+    def setUp(self):
+        self.edges = np.array([2.0, 3.0, 4.0, 5.0, 6.0, 7.0])
+        self.sm = object.__new__(PDSmearingMatrix)
+        self.sm._true_e_bin_edges = self.edges
+        self.n_bins = len(self.edges) - 1
+
+    def test_lowest_edge_is_first_bin(self):
+        self.assertEqual(self.sm.get_log10_true_e_idx(self.edges[0]), 0)
+
+    def test_highest_edge_is_last_bin(self):
+        self.assertEqual(self.sm.get_log10_true_e_idx(self.edges[-1]), self.n_bins - 1)
+
+    def test_upper_edge_mode_is_unchanged(self):
+        self.assertEqual(self.sm.get_log10_true_e_idx(self.edges[-1], upper_edge=True), self.n_bins)
+        self.assertEqual(self.sm.get_log10_true_e_idx(4.5, upper_edge=True), 3)
+
+    def test_outside_range_raises(self):
+        with self.assertRaises(ValueError):
+            self.sm.get_log10_true_e_idx(self.edges[-1] + 1e-6)
+        with self.assertRaises(ValueError):
+            self.sm.get_log10_true_e_idx(self.edges[0] - 1e-6)
+
+
 if __name__ == '__main__':
     unittest.main()
