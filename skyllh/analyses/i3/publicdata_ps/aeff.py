@@ -5,6 +5,7 @@ import numpy as np
 from scipy import interpolate
 
 from skyllh.core.binning import (
+    get_bin_indices_from_binedges,
     get_bin_indices_from_lower_and_upper_binedges,
     get_bincenters_from_binedges,
 )
@@ -238,6 +239,32 @@ class PDAeff:
         """
         return self._aeff_decnu_log10enu
 
+    def get_decnu_idx(self, decnu: float) -> int:
+        """Returns the index of the true neutrino declination bin for the given declination.
+
+        Parameters
+        ----------
+        decnu
+            The true neutrino declination.
+
+        Returns
+        -------
+        decnu_idx
+            The index of the true neutrino declination bin.
+
+        Raises
+        ------
+        ValueError
+            If the given declination is outside the declination binning of the
+            effective area.
+        """
+        if (decnu < self._decnu_binedges[0]) or (decnu > self._decnu_binedges[-1]):
+            raise ValueError(f'The declination {decnu} radians is not supported by the effective area!')
+
+        decnu_idx = get_bin_indices_from_binedges(self._decnu_binedges, decnu)
+
+        return int(decnu_idx)
+
     def get_aeff_for_decnu(self, decnu: float) -> np.ndarray:
         """Retrieves the effective area as function of log10_enu.
 
@@ -252,9 +279,7 @@ class PDAeff:
             The effective area in cm^2 for the given true neutrino declination
             as a function of log10 true neutrino energy.
         """
-        decnu_idx = np.digitize(decnu, self._decnu_binedges) - 1
-
-        aeff = self._aeff_decnu_log10enu[decnu_idx]
+        aeff = self._aeff_decnu_log10enu[self.get_decnu_idx(decnu)]
 
         return aeff
 

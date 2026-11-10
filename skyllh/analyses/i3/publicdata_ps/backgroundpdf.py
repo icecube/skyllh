@@ -11,6 +11,7 @@ from skyllh.analyses.i3.publicdata_ps.utils import (
 from skyllh.core.binning import (
     BinningDefinition,
     UsesBinning,
+    get_bin_indices_from_binedges,
 )
 from skyllh.core.pdf import (
     EnergyPDF,
@@ -568,8 +569,8 @@ class PDMCBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
         log10emu = tdm['log_energy']
         sindecmu = tdm['sin_dec']
 
-        log10emu_idxs = np.digitize(log10emu, self.get_binning('log_energy').binedges) - 1
-        sindecmu_idxs = np.digitize(sindecmu, self.get_binning('sin_dec').binedges) - 1
+        log10emu_idxs = get_bin_indices_from_binedges(self.get_binning('log_energy').binedges, log10emu)
+        sindecmu_idxs = get_bin_indices_from_binedges(self.get_binning('sin_dec').binedges, sindecmu)
 
         with TaskTimer(tl, 'Evaluating sindecmu-log10emu PDF.'):
             pd = self._hist_logE_sinDec[(log10emu_idxs, sindecmu_idxs)]
