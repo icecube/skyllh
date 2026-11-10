@@ -359,7 +359,13 @@ class PDDatasetSignalGenerator(
 
         events['log_true_energy'] = log_true_e
 
-        log_true_e_idxs = np.digitize(log_true_e, bins=sm.true_e_bin_edges) - 1
+        # The inverse CDF spline can numerically overshoot the true energy
+        # range slightly, so clamp the indices into the valid bin range.
+        log_true_e_idxs = np.clip(
+            np.digitize(log_true_e, bins=sm.true_e_bin_edges) - 1,
+            0,
+            sm.n_log10_true_e_bins - 1,
+        )
 
         # Sample reconstructed energies given true neutrino energies.
         (log_e_idxs, log_e) = sm.sample_log_e(rss, dec_idx, log_true_e_idxs)
