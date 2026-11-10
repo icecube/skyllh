@@ -322,7 +322,8 @@ class PDSmearingMatrix:
         if (true_dec < self.true_dec_bin_edges[0]) or (true_dec > self.true_dec_bin_edges[-1]):
             raise ValueError(f'The declination {true_dec} radians is not supported by the smearing matrix!')
 
-        true_dec_idx = np.digitize(true_dec, self.true_dec_bin_edges) - 1
+        # np.digitize maps the upper-most edge to n_bins, so clamp it into the last bin.
+        true_dec_idx = min(np.digitize(true_dec, self.true_dec_bin_edges) - 1, self.n_true_dec_bins - 1)
 
         return int(true_dec_idx)
 
