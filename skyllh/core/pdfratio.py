@@ -30,6 +30,7 @@ from skyllh.core.py import (
 from skyllh.core.services import (
     SrcDetSigYieldWeightsService,
 )
+from skyllh.core.source_hypo_grouping import SourceHypoGroupManager
 from skyllh.core.timing import TaskTimer, TimeLord
 from skyllh.core.trialdata import TrialDataManager
 
@@ -127,6 +128,16 @@ class PDFRatio(
         if not issequenceof(names, str):
             raise TypeError('The bkg_param_names property must be a sequence of str instances!')
         self._bkg_param_names = cast(list[str], names)
+
+    def change_shg_mgr(self, shg_mgr: SourceHypoGroupManager):
+        """This method is called when the source hypothesis group manager has changed. By default it does nothing.
+        Derived classes holding source dependent data need to override it.
+
+        Parameters
+        ----------
+        shg_mgr
+            The new instance of SourceHypoGroupManager.
+        """
 
     @abc.abstractmethod
     def initialize_for_new_trial(
@@ -275,6 +286,17 @@ class PDFRatioProduct(
         if not isinstance(pdfratio, PDFRatio):
             raise TypeError('The pdfratio2 property must be an instance of PDFRatio!')
         self._pdfratio2 = pdfratio
+
+    def change_shg_mgr(self, shg_mgr: SourceHypoGroupManager):
+        """Calls the ``change_shg_mgr`` method of each of the two PDFRatio instances.
+
+        Parameters
+        ----------
+        shg_mgr
+            The new instance of SourceHypoGroupManager.
+        """
+        self._pdfratio1.change_shg_mgr(shg_mgr=shg_mgr)
+        self._pdfratio2.change_shg_mgr(shg_mgr=shg_mgr)
 
     def initialize_for_new_trial(self, tdm: TrialDataManager, tl: TimeLord | None = None, **kwargs):
         """Initializes the PDFRatioProduct instance for a new trial.
@@ -475,6 +497,16 @@ class SourceWeightedPDFRatio(PDFRatio):
         source weighted PDF ratio.
         """
         return self._pdfratio
+
+    def change_shg_mgr(self, shg_mgr: SourceHypoGroupManager):
+        """Calls the ``change_shg_mgr`` method of the wrapped PDFRatio instance.
+
+        Parameters
+        ----------
+        shg_mgr
+            The new instance of SourceHypoGroupManager.
+        """
+        self._pdfratio.change_shg_mgr(shg_mgr=shg_mgr)
 
     def initialize_for_new_trial(self, tdm: TrialDataManager, tl: TimeLord | None = None, **kwargs):
         """Initializes the PDFRatio instance for a new trial. It calls the
