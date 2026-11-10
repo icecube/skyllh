@@ -271,15 +271,21 @@ class PDSignalEnergyPDFSet(  # pyright: ignore[reportIncompatibleMethodOverride]
             return
 
         if dec_bins not in self._gridparams_hash_pdf_dict_by_dec_bins:
+            # Create the PDFs before touching the state of this PDF set, so it stays consistent with self._dec_bins if
+            # the PDF creation fails.
+            pdf_list = self._create_pdfs(src_dec=src_dec, ppbar=ppbar)
             self._gridparams_hash_pdf_dict = {}
-            self._create_pdfs(src_dec=src_dec, ppbar=ppbar)
+            # Save all the energy PDF objects in the PDFSet PDF registry with
+            # the hash of the individual parameters as key.
+            for gridparams, pdf in zip(self.gridparams_list, pdf_list, strict=True):
+                self.add_pdf(pdf, gridparams)
             self._gridparams_hash_pdf_dict_by_dec_bins[dec_bins] = self._gridparams_hash_pdf_dict
 
         self._gridparams_hash_pdf_dict = self._gridparams_hash_pdf_dict_by_dec_bins[dec_bins]
         self._dec_bins = dec_bins
 
-    def _create_pdfs(self, src_dec: float, ppbar: ProgressBar | None = None):
-        """Creates the energy PDFs for the given source declination and adds them to this PDF set.
+    def _create_pdfs(self, src_dec: float, ppbar: ProgressBar | None = None) -> list[PDSignalEnergyPDF]:
+        """Creates the energy PDFs for the given source declination. This method does not modify this PDF set.
 
         Parameters
         ----------
@@ -287,6 +293,11 @@ class PDSignalEnergyPDFSet(  # pyright: ignore[reportIncompatibleMethodOverride]
             The declination of the source in radians.
         ppbar
             The instance of ProgressBar for the optional parent progress bar.
+
+        Returns
+        -------
+        pdf_list
+            The list of energy PDFs, one for each grid point of ``self.gridparams_list``, in the same order.
         """
         ds = self._ds
         fluxmodel = self._fluxmodel
@@ -419,7 +430,4 @@ class PDSignalEnergyPDFSet(  # pyright: ignore[reportIncompatibleMethodOverride]
 
         del sm_pdf_dec_slice
 
-        # Save all the energy PDF objects in the PDFSet PDF registry with
-        # the hash of the individual parameters as key.
-        for gridparams, pdf in zip(self.gridparams_list, pdf_list, strict=True):
-            self.add_pdf(pdf, gridparams)
+        return pdf_list
