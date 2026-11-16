@@ -516,8 +516,7 @@ class RSYNCDatasetTransfer(
             The password for the user name required to connect to the remote
             host.
         """
-        cls = get_class_of_func(self.transfer)
-        logger = get_logger(f'{classname(cls)}.transfer')
+        logger = get_logger(f'{classname(self)}.transfer')
 
         host = origin.host
 
@@ -768,8 +767,7 @@ class URLRetrieveDatasetTransfer(
             The password for the user name required to connect to the remote
             host.
         """
-        cls = get_class_of_func(self.transfer)
-        logger = get_logger(f'{classname(cls)}.transfer')
+        logger = get_logger(f'{classname(self)}.transfer')
 
         host = origin.host
         port = origin.port
