@@ -306,9 +306,9 @@ class DatasetOrigin:
             transfer_name = typename(transfer_cls)
         else:
             transfer_name = getattr(self.transfer_func, '__qualname__', classname(self.transfer_func))
-        s1 += f'transfer class = {transfer_name}\n'
+        s1 += f'transfer class = {transfer_name}'
         s += display.add_leading_text_line_padding(display.INDENTATION_WIDTH, s1)
-        s += '}'
+        s += '\n}'
 
         return s
 
@@ -1394,21 +1394,19 @@ class Dataset(
                 s2 += '\n'
             s2 += self._gen_datafile_pathfilename_entry(pathfilename)
         s1 += display.add_leading_text_line_padding(display.INDENTATION_WIDTH, s2)
-        s1 += '\n'
 
         if len(self._aux_data_definitions) > 0:
-            s1 += 'Auxiliary data:\n'
+            s1 += '\nAuxiliary data:\n'
             s2 = ''
             for idx, (name, pathfilename_list) in enumerate(self._aux_data_definitions.items()):
                 if idx > 0:
                     s2 += '\n'
 
                 s2 += name + ':'
-                s3 = ''
                 pathfilename_list = self.get_abs_pathfilename_list(pathfilename_list)
                 for pathfilename in pathfilename_list:
-                    s3 += '\n' + self._gen_datafile_pathfilename_entry(pathfilename)
-                s2 += display.add_leading_text_line_padding(display.INDENTATION_WIDTH, s3)
+                    s3 = self._gen_datafile_pathfilename_entry(pathfilename)
+                    s2 += '\n' + display.add_leading_text_line_padding(display.INDENTATION_WIDTH, s3)
             s1 += display.add_leading_text_line_padding(display.INDENTATION_WIDTH, s2)
 
         s += display.add_leading_text_line_padding(display.INDENTATION_WIDTH, s1)

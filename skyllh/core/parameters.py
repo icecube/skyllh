@@ -1734,15 +1734,15 @@ class ParameterModelMapper:
                 pstate = f'fixed ({p.initial:g})'
             else:
                 pstate = f'floating ({p.valmin:g} <= {p.initial:g} <= {p.valmax:g})'
-            ps = f'\n{p.name} [{pstate}]\n'
+            ps = f'{p.name} [{pstate}]\n'
 
-            ps1 = 'in models:\n'
+            ps1 = 'in models:'
             for midx, mpname in enumerate(self._model_param_names[:, pidx]):
                 if mpname is not None:
-                    ps1 += '- ' + self._models[midx].name + ': ' + mpname + '\n'
+                    ps1 += '\n- ' + self._models[midx].name + ': ' + mpname
 
             ps += display.add_leading_text_line_padding(display.INDENTATION_WIDTH, ps1)
-            s += display.add_leading_text_line_padding(2 * display.INDENTATION_WIDTH, ps)
+            s += '\n' + display.add_leading_text_line_padding(2 * display.INDENTATION_WIDTH, ps)
 
         return s
 
