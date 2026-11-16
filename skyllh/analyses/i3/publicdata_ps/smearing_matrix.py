@@ -319,6 +319,7 @@ class PDSmearingMatrix:
         -------
         true_dec_idx
             The index of the declination bin for the given declination value.
+            The last bin includes the upper-most bin edge.
         """
         if (true_dec < self.true_dec_bin_edges[0]) or (true_dec > self.true_dec_bin_edges[-1]):
             raise ValueError(f'The declination {true_dec} radians is not supported by the smearing matrix!')
@@ -335,9 +336,10 @@ class PDSmearingMatrix:
         log10_true_e
             The log10 value of the true energy.
         upper_edge
-            If False (default), return the bin index whose lower edge is
-            less than or equal to ``log10_true_e`` and whose upper edge is
-            strictly greater than ``log10_true_e``.
+            If False (default), return the index of the bin containing
+            ``log10_true_e``. Bins are half-open ``[lower, upper)``, except
+            the last bin, which is closed ``[lower, upper]``, so a value
+            equal to the upper-most edge maps to the last bin.
             If True, return the enclosing upper-edge index. This is useful
             to align an upper range boundary to the nearest bin edge without
             adding +1 at the call site.
