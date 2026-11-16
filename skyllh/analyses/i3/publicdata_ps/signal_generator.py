@@ -14,6 +14,7 @@ from skyllh.analyses.i3.publicdata_ps.smearing_matrix import (
 from skyllh.analyses.i3.publicdata_ps.utils import (
     psi_to_dec_and_ra,
 )
+from skyllh.core.binning import get_bin_indices_from_binedges
 from skyllh.core.dataset import Dataset
 from skyllh.core.flux_model import (
     TimeFluxProfile,
@@ -359,13 +360,7 @@ class PDDatasetSignalGenerator(
 
         events['log_true_energy'] = log_true_e
 
-        # The inverse CDF spline can numerically overshoot the true energy
-        # range slightly, so clamp the indices into the valid bin range.
-        log_true_e_idxs = np.clip(
-            np.digitize(log_true_e, bins=sm.true_e_bin_edges) - 1,
-            0,
-            sm.n_log10_true_e_bins - 1,
-        )
+        log_true_e_idxs = get_bin_indices_from_binedges(sm.true_e_bin_edges, log_true_e)
 
         # Sample reconstructed energies given true neutrino energies.
         (log_e_idxs, log_e) = sm.sample_log_e(rss, dec_idx, log_true_e_idxs)
