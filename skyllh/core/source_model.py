@@ -8,6 +8,7 @@ from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Self, cast
 
 import numpy as np
+from astropy import units as u
 
 from skyllh.core.model import (
     Model,
@@ -243,14 +244,23 @@ class PointLikeSource(SourceModel, IsPointlike):
         Parameters
         ----------
         ra
-            The right-ascention coordinate of the source in radians.
+            The right-ascention coordinate of the source in radians. It must be
+            within [0, 2pi].
         dec
-            The declination coordinate of the source in radians.
+            The declination coordinate of the source in radians. It must be
+            within [-pi/2, pi/2].
         name
             The name of the source.
         weight
             The relative weight of the source w.r.t. other sources.
             If set to None, unity will be used.
+
+        Raises
+        ------
+        ValueError
+            If the right-ascention or declination is outside its valid range.
+            Use :meth:`from_degrees` or :meth:`from_skycoord` for coordinates
+            given in degrees.
         """
         super().__init__(
             name=name,
@@ -269,7 +279,12 @@ class PointLikeSource(SourceModel, IsPointlike):
 
     @classmethod
     def from_degrees(
-        cls, ra: float, dec: float, name: str | None = None, weight: float | None = None, **kwargs
+        cls,
+        ra: float | u.Quantity,
+        dec: float | u.Quantity,
+        name: str | None = None,
+        weight: float | None = None,
+        **kwargs,
     ) -> Self:
         """Creates a new PointLikeSource instance from a right-ascention and
         declination coordinate given in degrees.
@@ -277,10 +292,13 @@ class PointLikeSource(SourceModel, IsPointlike):
         Parameters
         ----------
         ra
-            The right-ascention coordinate of the source in degrees.
+            The right-ascention coordinate of the source in degrees. It must be
+            within [0, 360] degrees. An astropy Quantity with an angular unit
+            is accepted as well.
         dec
             The declination coordinate of the source in degrees. It must be
-            within [-90, 90] degrees.
+            within [-90, 90] degrees. An astropy Quantity with an angular unit
+            is accepted as well.
         name
             The name of the source.
         weight
@@ -297,12 +315,21 @@ class PointLikeSource(SourceModel, IsPointlike):
         Raises
         ------
         ValueError
-            If the declination is outside the range [-90, 90] degrees.
+            If the right-ascention is outside the range [0, 360] degrees or the
+            declination is outside the range [-90, 90] degrees.
+        astropy.units.UnitConversionError
+            If ``ra`` or ``dec`` is a Quantity with a non-angular unit.
         """
-        if not -90 <= dec <= 90:
-            raise ValueError(f'The declination must be within [-90, 90] degrees! Got {dec} degrees.')
+        # Plain numbers are interpreted as degrees, Quantities are converted.
+        ra_deg = float(cast(float, ra.to_value(u.deg))) if isinstance(ra, u.Quantity) else float(ra)
+        dec_deg = float(cast(float, dec.to_value(u.deg))) if isinstance(dec, u.Quantity) else float(dec)
 
-        return cls(ra=float(np.deg2rad(ra)), dec=float(np.deg2rad(dec)), name=name, weight=weight, **kwargs)
+        if not 0 <= ra_deg <= 360:
+            raise ValueError(f'The right-ascention must be within [0, 360] degrees! Got {ra_deg} degrees.')
+        if not -90 <= dec_deg <= 90:
+            raise ValueError(f'The declination must be within [-90, 90] degrees! Got {dec_deg} degrees.')
+
+        return cls(ra=float(np.deg2rad(ra_deg)), dec=float(np.deg2rad(dec_deg)), name=name, weight=weight, **kwargs)
 
     @classmethod
     def from_skycoord(cls, coord: 'SkyCoord', name: str | None = None, weight: float | None = None, **kwargs) -> Self:
@@ -360,6 +387,11 @@ class PointLikeSource(SourceModel, IsPointlike):
 
     def _set_ra(self, ra):
         """Sets the right-ascention of the source in radians."""
+        if not 0 <= ra <= 2 * np.pi:
+            raise ValueError(
+                f'The right-ascention must be within [0, 2pi] radians! Got {ra}. '
+                'For coordinates in degrees use PointLikeSource.from_degrees.'
+            )
         self._ra = ra
 
     def _get_dec(self):
@@ -368,6 +400,11 @@ class PointLikeSource(SourceModel, IsPointlike):
 
     def _set_dec(self, dec):
         """Sets the declination of the source in radians."""
+        if not -np.pi / 2 <= dec <= np.pi / 2:
+            raise ValueError(
+                f'The declination must be within [-pi/2, pi/2] radians! Got {dec}. '
+                'For coordinates in degrees use PointLikeSource.from_degrees.'
+            )
         self._dec = dec
 
     def __str__(self):

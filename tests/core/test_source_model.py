@@ -120,6 +120,35 @@ class PointLikeSourceTestCase(
         with self.assertRaises(ValueError):
             PointLikeSource.from_degrees(ra=10.0, dec=91.0)
 
+    def test_from_degrees_invalid_ra(self):
+        with self.assertRaises(ValueError):
+            PointLikeSource.from_degrees(ra=-1.0, dec=10.0)
+        with self.assertRaises(ValueError):
+            PointLikeSource.from_degrees(ra=361.0, dec=10.0)
+
+    def test_from_degrees_quantity(self):
+        source = PointLikeSource.from_degrees(ra=10 * u.deg, dec=5 * u.deg)
+        self.assertAlmostEqual(source.ra, np.radians(10))
+        self.assertAlmostEqual(source.dec, np.radians(5))
+
+        source = PointLikeSource.from_degrees(ra=np.pi * u.rad, dec=-0.5 * u.rad)
+        self.assertAlmostEqual(source.ra, np.pi)
+        self.assertAlmostEqual(source.dec, -0.5)
+
+        with self.assertRaises(u.UnitConversionError):
+            PointLikeSource.from_degrees(ra=10 * u.m, dec=5 * u.deg)
+
+    def test_invalid_radians(self):
+        # Degree values passed to the radian constructor are caught.
+        with self.assertRaises(ValueError):
+            PointLikeSource(ra=10.0, dec=0.1)
+        with self.assertRaises(ValueError):
+            PointLikeSource(ra=0.1, dec=5.0)
+        with self.assertRaises(ValueError):
+            PointLikeSource(ra=-0.1, dec=0.1)
+        with self.assertRaises(ValueError):
+            self.source.dec = 45.0
+
     def test_from_skycoord(self):
         coord = SkyCoord(ra=77.35 * u.deg, dec=5.7 * u.deg, frame='icrs')
         source = PointLikeSource.from_skycoord(coord, name=self.name)
