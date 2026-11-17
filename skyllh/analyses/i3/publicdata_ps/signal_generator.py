@@ -14,6 +14,7 @@ from skyllh.analyses.i3.publicdata_ps.smearing_matrix import (
 from skyllh.analyses.i3.publicdata_ps.utils import (
     psi_to_dec_and_ra,
 )
+from skyllh.core.binning import get_bin_indices_from_binedges
 from skyllh.core.dataset import Dataset
 from skyllh.core.flux_model import (
     TimeFluxProfile,
@@ -359,7 +360,7 @@ class PDDatasetSignalGenerator(
 
         events['log_true_energy'] = log_true_e
 
-        log_true_e_idxs = np.digitize(log_true_e, bins=sm.true_e_bin_edges) - 1
+        log_true_e_idxs = get_bin_indices_from_binedges(sm.true_e_bin_edges, log_true_e)
 
         # Sample reconstructed energies given true neutrino energies.
         (log_e_idxs, log_e) = sm.sample_log_e(rss, dec_idx, log_true_e_idxs)

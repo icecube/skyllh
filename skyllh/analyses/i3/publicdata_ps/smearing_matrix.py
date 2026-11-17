@@ -1,5 +1,6 @@
 import numpy as np
 
+from skyllh.core.binning import get_bin_indices_from_binedges
 from skyllh.core.random import RandomStateService
 from skyllh.core.storage import create_FileLoader
 
@@ -318,12 +319,12 @@ class PDSmearingMatrix:
         -------
         true_dec_idx
             The index of the declination bin for the given declination value.
+            The last bin includes the upper-most bin edge.
         """
         if (true_dec < self.true_dec_bin_edges[0]) or (true_dec > self.true_dec_bin_edges[-1]):
             raise ValueError(f'The declination {true_dec} radians is not supported by the smearing matrix!')
 
-        # np.digitize maps the upper-most edge to n_bins, so clamp it into the last bin.
-        true_dec_idx = min(np.digitize(true_dec, self.true_dec_bin_edges) - 1, self.n_true_dec_bins - 1)
+        true_dec_idx = get_bin_indices_from_binedges(self.true_dec_bin_edges, true_dec)
 
         return int(true_dec_idx)
 
@@ -335,9 +336,10 @@ class PDSmearingMatrix:
         log10_true_e
             The log10 value of the true energy.
         upper_edge
-            If False (default), return the bin index whose lower edge is
-            less than or equal to ``log10_true_e`` and whose upper edge is
-            strictly greater than ``log10_true_e``.
+            If False (default), return the index of the bin containing
+            ``log10_true_e``. Bins are half-open ``[lower, upper)``, except
+            the last bin, which is closed ``[lower, upper]``, so a value
+            equal to the upper-most edge maps to the last bin.
             If True, return the enclosing upper-edge index. This is useful
             to align an upper range boundary to the nearest bin edge without
             adding +1 at the call site.
@@ -362,7 +364,7 @@ class PDSmearingMatrix:
         if upper_edge:
             return int(np.digitize(log10_true_e, self._true_e_bin_edges, right=True))
 
-        log10_true_e_idx = np.digitize(log10_true_e, self._true_e_bin_edges) - 1
+        log10_true_e_idx = get_bin_indices_from_binedges(self._true_e_bin_edges, log10_true_e)
 
         return int(log10_true_e_idx)
 

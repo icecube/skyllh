@@ -49,6 +49,41 @@ def get_binedges_from_bincenters(centers: np.ndarray) -> np.ndarray:
     return edges
 
 
+def get_bin_indices_from_binedges(binedges: np.ndarray, values: np.ndarray | float) -> np.ndarray:
+    """Returns the bin indices of the given values for the given bin edges.
+
+    This is equivalent to ``np.digitize(values, binedges) - 1``, except that a
+    value equal to the upper-most bin edge is assigned to the last bin, i.e.
+    the last bin is closed, like it is for ``np.histogram``.
+    ``np.digitize`` would assign it the out-of-range index ``nbins``.
+
+    Note: Values outside the binning range are not treated specially. They
+    get the index -1 (below the lowest edge) or ``nbins`` (above the highest
+    edge). Callers must check the range themselves if required.
+
+    Parameters
+    ----------
+    binedges
+        The (nbins+1,)-shaped 1D ndarray holding the monotonically increasing
+        bin edges.
+    values
+        The value(s) for which to get the bin indices.
+
+    Returns
+    -------
+    idxs
+        The bin indices of the given values, with the same shape as
+        ``values``.
+    """
+    binedges = np.asarray(binedges)
+    values = np.asarray(values)
+
+    idxs = np.digitize(values, binedges) - 1
+    idxs = np.where(values == binedges[-1], len(binedges) - 2, idxs)
+
+    return idxs
+
+
 def get_bin_indices_from_lower_and_upper_binedges(le: np.ndarray, ue: np.ndarray, values: np.ndarray) -> np.ndarray:
     """Returns the bin indices for the given values which must fall into bins
     defined by the given lower and upper bin edges.
@@ -202,7 +237,7 @@ class BinningDefinition:
 
     def get_binwidth_from_value(self, value):
         """Returns the width of the bin the given value falls into."""
-        idx = np.digitize(value, self._binedges) - 1
+        idx = get_bin_indices_from_binedges(self._binedges, value)
 
         bin_width = self.binwidths[idx]
 

@@ -1,6 +1,6 @@
 import numpy as np
 
-from skyllh.core.binning import BinningDefinition, UsesBinning
+from skyllh.core.binning import BinningDefinition, UsesBinning, get_bin_indices_from_binedges
 from skyllh.core.logging import (
     get_logger,
 )
@@ -289,8 +289,8 @@ class I3EnergyPDF(
         log10_energy_binning = self.get_binning('log_energy')
         sin_dec_binning = self.get_binning('sin_dec')
 
-        log10_energy_idx = np.digitize(tdm['log_energy'], log10_energy_binning.binedges) - 1
-        sin_dec_idx = np.digitize(tdm['sin_dec'], sin_dec_binning.binedges) - 1
+        log10_energy_idx = get_bin_indices_from_binedges(log10_energy_binning.binedges, tdm['log_energy'])
+        sin_dec_idx = get_bin_indices_from_binedges(sin_dec_binning.binedges, tdm['sin_dec'])
 
         with TaskTimer(tl, 'Evaluating log10_energy-sin_dec histogram.'):
             pd = self._hist_log10_energy_sin_dec[(log10_energy_idx, sin_dec_idx)]
