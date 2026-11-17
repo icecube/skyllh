@@ -1,3 +1,5 @@
+from typing import cast
+
 import numpy as np
 
 from skyllh.analyses.i3.publicdata_ps.backgroundpdf import PDDataBackgroundI3EnergyPDF, PDMCBackgroundI3EnergyPDF
@@ -13,8 +15,10 @@ from skyllh.core.pdfratio import (
     SigSetOverBkgPDFRatio,
 )
 from skyllh.core.py import (
+    classname,
     module_class_method_name,
 )
+from skyllh.core.source_hypo_grouping import SourceHypoGroupManager
 from skyllh.core.timing import TimeLord
 from skyllh.core.trialdata import TrialDataManager
 
@@ -57,6 +61,26 @@ class PDSigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio):
         self._cache_fitparams_hash = None
         self._cache_ratio: np.ndarray | None = None
         self._cache_grads: np.ndarray | None = None
+
+    def change_shg_mgr(self, shg_mgr: SourceHypoGroupManager):
+        """Changes the signal energy PDFs to the declination of the source of the given source hypothesis group
+        manager.
+
+        Parameters
+        ----------
+        shg_mgr
+            The new instance of SourceHypoGroupManager.
+
+        Raises
+        ------
+        ValueError
+            If the source hypothesis group manager does not define exactly one source, because the signal PDF set
+            describes a single declination.
+        """
+        if shg_mgr.n_sources != 1:
+            raise ValueError(f'The {classname(self)} class supports a single source only, got {shg_mgr.n_sources}!')
+
+        cast(PDSignalEnergyPDFSet, self._sig_pdf_set).change_src_dec(src_dec=shg_mgr.source_list[0].dec)
 
     def _is_cached(self, tdm: TrialDataManager, fitparams_hash: int) -> bool:
         """Checks if the ratio and gradients for the given hash of local fit

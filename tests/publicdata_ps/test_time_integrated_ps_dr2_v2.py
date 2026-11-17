@@ -71,6 +71,28 @@ class NGC1068UnblindingDR2TestCase(unittest.TestCase):
         np.testing.assert_allclose(params_dict['ns'], 79.5471446, rtol=1e-5)
         np.testing.assert_allclose(params_dict['gamma'], 3.2015511, rtol=1e-5)
 
+    def test_change_source_matches_fresh_analysis(self):
+        """Changing the source from NGC 1068 to PKS 1424+240 gives the same unblinding result as an analysis created
+        for PKS 1424+240.
+        """
+        source = PointLikeSource(name='PKS 1424+240', ra=np.radians(216.76), dec=np.radians(23.8))
+        fresh_ana = create_analysis(cfg=self.cfg, datasets=self.datasets, source=source)
+
+        self.ana.change_source(source)
+        try:
+            (TS, params_dict, status) = self.ana.unblind(minimizer_rss=RandomStateService(seed=1), tl=self.tl)
+            (fresh_TS, fresh_params_dict, fresh_status) = fresh_ana.unblind(minimizer_rss=RandomStateService(seed=1))
+
+            logger.info(f'{self.tl}')
+            logger.info(f'change_source: TS = {TS:.7f}, params = {params_dict}, status = {status}')
+            logger.info(f'fresh analysis: TS = {fresh_TS:.7f}, params = {fresh_params_dict}, status = {fresh_status}')
+
+            np.testing.assert_allclose(TS, fresh_TS, rtol=1e-9)
+            np.testing.assert_allclose(params_dict['ns'], fresh_params_dict['ns'], rtol=1e-9)
+            np.testing.assert_allclose(params_dict['gamma'], fresh_params_dict['gamma'], rtol=1e-9)
+        finally:
+            self.ana.change_source(self.__class__.source)
+
     def test_do_trial_background(self):
         rss = RandomStateService(seed=1)
         with self.tl.task_timer('Call do_trial with mean_n_sig=0.'):
