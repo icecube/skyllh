@@ -40,6 +40,7 @@ def create_dataset_collection(
     https://doi.org/10.7910/DVN/MMIIZA.
 
     Note that compared to the previous data release:
+
     - a finer declination binning is provided for the 14yr dataset, thus
       providing a more accurate description of the detector response variations
       across the sky;

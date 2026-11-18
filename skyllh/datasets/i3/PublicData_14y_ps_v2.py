@@ -20,17 +20,18 @@ def create_dataset_collection(
     https://doi.org/10.7910/DVN/MMIIZA.
 
     Version 2: Fixes two binning issues identified in version 1.0:
+
     1. The IC86 Monte Carlo simulations extend only up to a true energy of
-    log10(E/GeV) = 8.7, which falls inside the last true-energy bin,
-    log10(E/GeV) = [8.6, 8.8). The resulting lack of simulated events
-    artificially reduced the effective area in that bin at all declinations.
-    Version 2.0 sets the range of this bin to log10(E/GeV) = [8.6, 8.7),
-    matching the simulation boundary.
+       log10(E/GeV) = 8.7, which falls inside the last true-energy bin,
+       log10(E/GeV) = [8.6, 8.8). The resulting lack of simulated events
+       artificially reduced the effective area in that bin at all
+       declinations. Version 2.0 sets the range of this bin to
+       log10(E/GeV) = [8.6, 8.7), matching the simulation boundary.
     2. The sin(declination) binning of the smearing matrices was set to
-    IceCube's internal IC40 binning for all detector configurations (IC40,
-    IC59, IC79, and IC86), rather than to the per-season internal binning
-    described in the accompanying paper. Version 2.0 uses the corresponding
-    binning for each season.
+       IceCube's internal IC40 binning for all detector configurations (IC40,
+       IC59, IC79, and IC86), rather than to the per-season internal binning
+       described in the accompanying paper. Version 2.0 uses the corresponding
+       binning for each season.
 
     Parameters
     ----------
