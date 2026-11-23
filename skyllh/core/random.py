@@ -1,5 +1,9 @@
 import numpy as np
 
+from skyllh._rs import (
+    RUST_AVAILABLE,
+    _rs,
+)
 from skyllh.core.py import (
     classname,
     int_cast,
@@ -199,6 +203,10 @@ class RandomChoice:
             from ``self.items``.
         """
         uniform_values = rss.random.random(size)
+
+        if RUST_AVAILABLE and size >= 512:
+            idxs = _rs.weighted_choice_indices(self._cdf, uniform_values)
+            return self._items[idxs]
 
         # The np.searchsorted function is much faster when the values are
         # sorted. But we want to keep the randomness of the returned items.
