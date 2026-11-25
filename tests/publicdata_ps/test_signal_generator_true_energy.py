@@ -19,14 +19,16 @@ class TrueEnergyInverseCDFTestCase(unittest.TestCase):
     EDGES = np.array([2.0, 2.2, 2.4, 2.6, 2.8, 3.0])
     DET_PROB = np.array([0.40, 0.25, 0.17, 0.11, 0.07])
 
-    def _make_spline(self, log_e_min=EDGES[0], log_e_max=EDGES[-1]):
+    def _make_spline(self, log_e_min=EDGES[0], log_e_max=EDGES[-1], det_prob=None):
+        if det_prob is None:
+            det_prob = self.DET_PROB
         lower, upper = self.EDGES[:-1], self.EDGES[1:]
         mask = (upper > log_e_min) & (lower < log_e_max)
         effA = types.SimpleNamespace(
             log10_enu_binedges_lower=lower,
             log10_enu_binedges_upper=upper,
             get_log10_enu_bin_mask=lambda lo, hi: (upper > lo) & (lower < hi),
-            det_prob=self.DET_PROB[mask],
+            det_prob=det_prob[mask],
         )
         gen = object.__new__(PDDatasetSignalGenerator)
         gen._effA_arr = np.array([effA], dtype=np.object_)
@@ -71,6 +73,23 @@ class TrueEnergyInverseCDFTestCase(unittest.TestCase):
         self.assertGreater(log10_e.max(), 0.5 * (self.EDGES[-2] + self.EDGES[-1]))
         frac = np.histogram(log10_e, bins=self.EDGES)[0] / log10_e.size
         np.testing.assert_allclose(frac, self._bin_prob(), atol=5e-3)
+
+    def test_dropped_bins_receive_no_energies(self):
+        # Bins whose probability is negligible (<= 1e-15) are dropped. The
+        # neighbouring kept bins must not spread into their energy range.
+        det_prob = self.DET_PROB.copy()
+        det_prob[[0, 2]] = 1e-20
+        spl = self._make_spline(det_prob=det_prob)
+        rng = np.random.default_rng(3)
+
+        log10_e = np.asarray(interpolate.splev(rng.uniform(size=200_000), spl, ext=3))
+
+        frac = np.histogram(log10_e, bins=self.EDGES)[0] / log10_e.size
+        prob = np.diff(10**self.EDGES) * det_prob
+        prob[[0, 2]] = 0
+        np.testing.assert_allclose(frac, prob / prob.sum(), atol=5e-3)
+        self.assertEqual(frac[0], 0)
+        self.assertEqual(frac[2], 0)
 
 
 if __name__ == '__main__':

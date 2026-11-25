@@ -280,13 +280,30 @@ class PDDatasetSignalGenerator(
                 f'{cum_per_bin}.'
             )
 
-        # The cumulative probability up to and including a bin is reached at
-        # that bin's upper edge, so the edges are the support points: an
-        # energy drawn for a bin then lies inside that bin.
-        bin_edges = np.concatenate(([low_bin_edges[0]], high_bin_edges[to_keep]))
+        # Each kept bin maps its cumulative probability interval linearly onto
+        # its own [lower, upper] edges, so an energy drawn for a bin lies
+        # inside that bin. Where dropped bins leave a gap between two kept
+        # bins, the inverse CDF jumps over it: both support points share the
+        # same cumulative probability.
+        kept_low = low_bin_edges[to_keep]
+        kept_high = high_bin_edges[to_keep]
+        cum_pts = [cum_per_bin[0]]
+        log_e_pts = [kept_low[0]]
+        for i in range(prob_per_bin.size):
+            if i > 0 and kept_low[i] > kept_high[i - 1]:
+                cum_pts.append(cum_per_bin[i])
+                log_e_pts.append(kept_low[i])
+            cum_pts.append(cum_per_bin[i + 1])
+            log_e_pts.append(kept_high[i])
 
-        # Build a spline for the inverse CDF.
-        return interpolate.splrep(cum_per_bin, bin_edges, k=1, s=0)
+        # Build the linear spline (k=1) for the inverse CDF directly from its
+        # knots, as splrep would. A knot that appears twice makes the spline
+        # jump there, which splrep cannot represent.
+        cum_pts = np.asarray(cum_pts, dtype=np.float64)
+        log_e_pts = np.asarray(log_e_pts, dtype=np.float64)
+        t = np.concatenate(([cum_pts[0]], cum_pts, [cum_pts[-1]]))
+        c = np.concatenate((log_e_pts, [0.0, 0.0]))
+        return (t, c, 1)
 
     def _draw_signal_events_for_source(
         self,
