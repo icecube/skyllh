@@ -1,12 +1,9 @@
 from collections.abc import Sequence
-from typing import cast
 
 import numpy as np
-from scipy import interpolate
 
 from skyllh.core.binning import (
     get_bin_indices_from_binedges,
-    get_bin_indices_from_lower_and_upper_binedges,
     get_bincenters_from_binedges,
 )
 from skyllh.core.storage import (
@@ -169,14 +166,22 @@ class PDAeff:
             else:
                 max_log10enu = min(self._log10_enu_binedges_upper[-1], max_log10enu)
 
-            m = (self.log10_enu_bincenters >= min_log10enu) & (self.log10_enu_bincenters < max_log10enu)
+            m = self.get_log10_enu_bin_mask(min_log10enu, max_log10enu)
             low_bin_edges = self._log10_enu_binedges_lower[m]
             high_bin_edges = self._log10_enu_binedges_upper[m]
 
-            # Get the detection probability P(E_nu | sin(dec)) per bin.
+            # Get the detection probability P(E_nu | sin(dec)) per whole bin,
+            # also for the bins the energy range cuts.
             self.det_prob = self.get_detection_prob_for_decnu(
                 src_dec, 10**low_bin_edges, 10**high_bin_edges, 10 ** low_bin_edges[0], 10 ** high_bin_edges[-1]
             )
+
+    def get_log10_enu_bin_mask(self, min_log10enu: float, max_log10enu: float) -> np.ndarray:
+        """Returns the mask of the energy bins that overlap the range
+        [``min_log10enu``, ``max_log10enu``], including bins the range only
+        partly covers.
+        """
+        return (self._log10_enu_binedges_upper > min_log10enu) & (self._log10_enu_binedges_lower < max_log10enu)
 
     @property
     def decnu_binedges(self):
@@ -318,50 +323,22 @@ class PDAeff:
             The neutrino energy detection probabilities for the given true
             enegry ranges.
         """
+        # The effective area is a histogram: constant within each energy bin.
+        # Integrating it as such keeps the probability of a whole bin equal to
+        # its share of the effective area, as the flux weights assume, and
+        # includes the part of a bin that a range ends in.
         enu_binedges = np.power(10, self.log10_enu_binedges)
+        daeff_dE = self.get_aeff_for_decnu(decnu) / np.diff(enu_binedges)
 
-        # Get the bin indices for the lower and upper energy range values.
-        if enu_range_min <= enu_binedges[0]:
-            lidx = 0
-        else:
-            (lidx,) = get_bin_indices_from_lower_and_upper_binedges(
-                enu_binedges[:-1], enu_binedges[1:], np.array([enu_range_min])
+        def integral(e1: np.ndarray, e2: np.ndarray) -> np.ndarray:
+            overlap = np.clip(
+                np.minimum(e2[:, np.newaxis], enu_binedges[np.newaxis, 1:])
+                - np.maximum(e1[:, np.newaxis], enu_binedges[np.newaxis, :-1]),
+                0,
+                None,
             )
-        if enu_range_max >= enu_binedges[-1]:
-            uidx = len(enu_binedges) - 1
-        else:
-            (uidx,) = get_bin_indices_from_lower_and_upper_binedges(
-                enu_binedges[:-1], enu_binedges[1:], np.array([enu_range_max])
-            )
+            return np.sum(overlap * daeff_dE[np.newaxis, :], axis=1)
 
-        aeff = self.get_aeff_for_decnu(decnu)
-        aeff = aeff[lidx:uidx]
-        enu_binedges = enu_binedges[lidx : uidx + 1]
+        norm = integral(np.atleast_1d(enu_range_min), np.atleast_1d(enu_range_max))[0]
 
-        dE = np.diff(enu_binedges)
-
-        daeff_dE = aeff / dE
-
-        # Create a spline representation that spans the entire enu range.
-        x = np.empty((len(enu_binedges) + 1,), dtype=np.double)
-        x[0] = enu_binedges[0]
-        x[1:-1] = get_bincenters_from_binedges(enu_binedges)
-        x[-1] = enu_binedges[-1]
-
-        y = np.empty((len(enu_binedges) + 1,), dtype=np.double)
-        y[0] = daeff_dE[0]
-        y[1:-1] = daeff_dE
-        y[-1] = daeff_dE[-1]
-
-        spl = interpolate.splrep(x, y, k=1, s=0)
-
-        norm = cast(float, interpolate.splint(enu_range_min, enu_range_max, spl))
-
-        enu_min = np.atleast_1d(enu_min)
-        enu_max = np.atleast_1d(enu_max)
-
-        det_prob = np.empty((len(enu_min),), dtype=np.double)
-        for i in range(len(enu_min)):
-            det_prob[i] = cast(float, interpolate.splint(enu_min[i], enu_max[i], spl)) / norm
-
-        return det_prob
+        return integral(np.atleast_1d(enu_min), np.atleast_1d(enu_max)) / norm

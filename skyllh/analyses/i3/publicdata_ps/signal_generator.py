@@ -245,11 +245,15 @@ class PDDatasetSignalGenerator(
         """
         effA = self._effA_arr[src_idx]
 
-        m = (effA.log10_enu_bincenters >= log_e_min) & (effA.log10_enu_bincenters < log_e_max)
-        low_bin_edges = effA.log10_enu_binedges_lower[m]
-        high_bin_edges = effA.log10_enu_binedges_upper[m]
+        # The bins the energy range overlaps, cut to the range: an energy range
+        # that ends inside a bin keeps the part of the bin within it.
+        m = effA.get_log10_enu_bin_mask(log_e_min, log_e_max)
+        low_bin_edges = np.maximum(effA.log10_enu_binedges_lower[m], log_e_min)
+        high_bin_edges = np.minimum(effA.log10_enu_binedges_upper[m], log_e_max)
 
-        # Flux probability P(E_nu | gamma) per bin.
+        # Flux probability P(E_nu | gamma) per bin. The detection probability
+        # stays that of the whole bin, so a cut bin is weighted by the flux in
+        # its remaining part, as in _calculate_flux_weight.
         flux_prob = fluxmodel.energy_profile.get_integral(
             E1=10**low_bin_edges, E2=10**high_bin_edges
         ) / fluxmodel.energy_profile.get_integral(E1=10 ** low_bin_edges[0], E2=10 ** high_bin_edges[-1])

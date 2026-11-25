@@ -19,23 +19,37 @@ class TrueEnergyInverseCDFTestCase(unittest.TestCase):
     EDGES = np.array([2.0, 2.2, 2.4, 2.6, 2.8, 3.0])
     DET_PROB = np.array([0.40, 0.25, 0.17, 0.11, 0.07])
 
-    def _make_spline(self):
+    def _make_spline(self, log_e_min=EDGES[0], log_e_max=EDGES[-1]):
+        lower, upper = self.EDGES[:-1], self.EDGES[1:]
+        mask = (upper > log_e_min) & (lower < log_e_max)
         effA = types.SimpleNamespace(
-            log10_enu_bincenters=0.5 * (self.EDGES[:-1] + self.EDGES[1:]),
-            log10_enu_binedges_lower=self.EDGES[:-1],
-            log10_enu_binedges_upper=self.EDGES[1:],
-            det_prob=self.DET_PROB,
+            log10_enu_binedges_lower=lower,
+            log10_enu_binedges_upper=upper,
+            get_log10_enu_bin_mask=lambda lo, hi: (upper > lo) & (lower < hi),
+            det_prob=self.DET_PROB[mask],
         )
         gen = object.__new__(PDDatasetSignalGenerator)
         gen._effA_arr = [effA]
         fluxmodel = types.SimpleNamespace(energy_profile=_FlatEnergyProfile())
-        return gen._create_inv_cdf_spline(
-            src_idx=0, fluxmodel=fluxmodel, log_e_min=self.EDGES[0], log_e_max=self.EDGES[-1]
-        )
+        return gen._create_inv_cdf_spline(src_idx=0, fluxmodel=fluxmodel, log_e_min=log_e_min, log_e_max=log_e_max)
 
     def _bin_prob(self):
         prob = np.diff(10**self.EDGES) * self.DET_PROB
         return prob / prob.sum()
+
+    def test_energy_range_inside_bins_is_drawn_exactly(self):
+        spl = self._make_spline(log_e_min=2.1, log_e_max=2.7)
+        rng = np.random.default_rng(2)
+
+        log10_e = interpolate.splev(rng.uniform(size=200_000), spl)
+
+        self.assertAlmostEqual(log10_e.min(), 2.1, delta=1e-3)
+        self.assertAlmostEqual(log10_e.max(), 2.7, delta=1e-3)
+        # A cut bin keeps its whole-bin detection probability and the flux of its remaining part.
+        edges = np.array([2.1, 2.2, 2.4, 2.6, 2.7])
+        prob = np.diff(10**edges) * self.DET_PROB[:4]
+        frac = np.histogram(log10_e, bins=edges)[0] / log10_e.size
+        np.testing.assert_allclose(frac, prob / prob.sum(), atol=5e-3)
 
     def test_cumulative_probability_is_reached_at_upper_bin_edges(self):
         spl = self._make_spline()
