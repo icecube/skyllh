@@ -162,6 +162,12 @@ class PDAeff:
             range_max = highest if max_log10enu is None else min(highest, max_log10enu)
 
             m = self.get_log10_enu_bin_mask(range_min, range_max)
+            if not np.any(m):
+                raise ValueError(
+                    f'The energy range [{range_min:g}, {range_max:g}] in log10(E_nu/GeV) does not overlap the '
+                    'energy binning of the effective area, which covers '
+                    f'[{lowest:g}, {highest:g}]!'
+                )
             low_bin_edges = self._log10_enu_binedges_lower[m]
             high_bin_edges = self._log10_enu_binedges_upper[m]
 
@@ -317,6 +323,11 @@ class PDAeff:
         det_prob
             The neutrino energy detection probabilities for the given true
             enegry ranges.
+
+        Raises
+        ------
+        ValueError
+            If the effective area is zero over the entire energy range.
         """
         # The effective area is a histogram: constant within each energy bin.
         # Integrating it as such keeps the probability of a whole bin equal to
@@ -335,5 +346,63 @@ class PDAeff:
             return np.sum(overlap * daeff_dE[np.newaxis, :], axis=1)
 
         norm = integral(np.atleast_1d(enu_range_min), np.atleast_1d(enu_range_max))[0]
+        if not norm > 0:
+            raise ValueError(
+                f'The effective area for the neutrino declination {decnu:g} radians is zero over the entire energy '
+                f'range [{enu_range_min:g}, {enu_range_max:g}] GeV!'
+            )
 
         return integral(np.atleast_1d(enu_min), np.atleast_1d(enu_max)) / norm
+
+    def get_detectable_flux_for_decnu(
+        self,
+        decnu: float,
+        enu_min: np.ndarray,
+        enu_max: np.ndarray,
+        energy_profile,
+    ) -> np.ndarray:
+        r"""Calculates the detectable flux in the given true neutrino energy
+        ranges for a given neutrino declination.
+
+        The effective area is a histogram, constant within each energy bin, so
+        the detectable flux in a range is
+
+        .. math::
+
+            \sum_i A_i \int_{[E_\mathrm{min}, E_\mathrm{max}] \cap \mathrm{bin}_i} \Phi(E) \mathrm{d}E
+
+        Unlike the product of the flux integral and the detection probability
+        of the range, this is exact also for ranges that cover several bins or
+        only part of a bin.
+
+        Parameters
+        ----------
+        decnu
+            The neutrino declination in radians.
+        enu_min
+            The (n,)-shaped minimum energies of the ranges in GeV.
+        enu_max
+            The (n,)-shaped maximum energies of the ranges in GeV.
+        energy_profile
+            The instance of EnergyFluxProfile, which takes energies in GeV.
+
+        Returns
+        -------
+        detectable_flux
+            The (n,)-shaped detectable flux of each range.
+        """
+        enu_binedges = np.power(10, self.log10_enu_binedges)
+        aeff = self.get_aeff_for_decnu(decnu)
+
+        enu_min = np.atleast_1d(enu_min)
+        enu_max = np.atleast_1d(enu_max)
+        overlap_low = np.maximum(enu_min[:, np.newaxis], enu_binedges[np.newaxis, :-1])
+        overlap_high = np.minimum(enu_max[:, np.newaxis], enu_binedges[np.newaxis, 1:])
+        m = overlap_high > overlap_low
+
+        detectable_flux = np.zeros(m.shape, dtype=np.float64)
+        detectable_flux[m] = (
+            energy_profile.get_integral(overlap_low[m], overlap_high[m]) * np.broadcast_to(aeff, m.shape)[m]
+        )
+
+        return np.sum(detectable_flux, axis=1)

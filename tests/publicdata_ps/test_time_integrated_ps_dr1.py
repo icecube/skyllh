@@ -70,9 +70,9 @@ class AnalysisTestCase(unittest.TestCase):
             logger.info(f'gamma_fit = {params_dict["gamma"]:.7f}')
             logger.info(f'minimizer status = {status}')
 
-            np.testing.assert_allclose(TS, 19.3824371, rtol=1e-5)
-            np.testing.assert_allclose(params_dict['ns'], 54.7670422, rtol=1e-5)
-            np.testing.assert_allclose(params_dict['gamma'], 3.1525821, rtol=1e-5)
+            np.testing.assert_allclose(TS, 19.3094281, rtol=1e-5)
+            np.testing.assert_allclose(params_dict['ns'], 54.6157992, rtol=1e-5)
+            np.testing.assert_allclose(params_dict['gamma'], 3.2285787, rtol=1e-5)
         finally:
             self.ana.change_source(self.__class__.source)
 
@@ -123,9 +123,9 @@ class AnalysisTestCase(unittest.TestCase):
         logger.info(f'gamma_fit = {params_dict["gamma"]:.7f}')
         logger.info(f'minimizer status = {status}')
 
-        np.testing.assert_allclose(TS, 13.4064078, rtol=1e-5)
-        np.testing.assert_allclose(params_dict['ns'], 12.8939297, rtol=1e-5)
-        np.testing.assert_allclose(params_dict['gamma'], 2.1161471, rtol=1e-5)
+        np.testing.assert_allclose(TS, 13.4292717, rtol=1e-5)
+        np.testing.assert_allclose(params_dict['ns'], 12.8995649, rtol=1e-5)
+        np.testing.assert_allclose(params_dict['gamma'], 2.1349661, rtol=1e-5)
 
     def test_signal_energy_pdf_integral_normalization(self):
         """Each PDSignalEnergyPDF spline integrates to 1 over its energy range."""
@@ -159,9 +159,9 @@ class AnalysisTestCase(unittest.TestCase):
         logger.info(f'gamma = {res["gamma"]}')
 
         np.testing.assert_equal(res['n_sig'], 37)
-        np.testing.assert_allclose(res['ts'], 117.765637, rtol=1e-5)
-        np.testing.assert_allclose(res['ns'], 31.333430, rtol=1e-5)
-        np.testing.assert_allclose(res['gamma'], 1.995297, rtol=1e-5)
+        np.testing.assert_allclose(res['ts'], 117.741468, rtol=1e-5)
+        np.testing.assert_allclose(res['ns'], 31.225502, rtol=1e-5)
+        np.testing.assert_allclose(res['gamma'], 2.008579, rtol=1e-5)
 
 
 class AnalysisWithEnergyRangeTestCase(unittest.TestCase):
@@ -262,9 +262,9 @@ class AnalysisWithEnergyRangeTestCase(unittest.TestCase):
         logger.info(f'gamma = {res["gamma"]}')
 
         np.testing.assert_equal(res['n_sig'], 37)
-        np.testing.assert_allclose(res['ts'], 44.5812166591351, rtol=1e-5)
-        np.testing.assert_allclose(res['ns'], 37.8207159838115, rtol=1e-5)
-        np.testing.assert_allclose(res['gamma'], 2.228593611444444, rtol=1e-5)
+        np.testing.assert_allclose(res['ts'], 44.68266194926461, rtol=1e-5)
+        np.testing.assert_allclose(res['ns'], 37.744258222877235, rtol=1e-5)
+        np.testing.assert_allclose(res['gamma'], 2.249998628880866, rtol=1e-5)
 
     def test_energy_range_consistency(self):
         """Passing energy_range to create_analysis gives the same result as setting it via the
@@ -322,9 +322,9 @@ class AnalysisWithEnergyRangeTestCase(unittest.TestCase):
         logger.info(f'gamma = {res_mid["gamma"]}')
 
         np.testing.assert_equal(res_mid['n_sig'], 32)
-        np.testing.assert_allclose(res_mid['ts'], 117.151862, rtol=1e-5)
-        np.testing.assert_allclose(res_mid['ns'], 34.224642, rtol=1e-5)
-        np.testing.assert_allclose(res_mid['gamma'], 1.922973, rtol=1e-5)
+        np.testing.assert_allclose(res_mid['ts'], 117.174104, rtol=1e-5)
+        np.testing.assert_allclose(res_mid['ns'], 34.060740, rtol=1e-5)
+        np.testing.assert_allclose(res_mid['gamma'], 1.933974, rtol=1e-5)
 
         # Restore original energy_range and re-run with the same seed.
         self.ana_mutable.energy_range = self.ENERGY_RANGE

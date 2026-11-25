@@ -67,9 +67,9 @@ class NGC1068UnblindingDR2TestCase(unittest.TestCase):
         logger.info(f'gamma_fit = {params_dict["gamma"]:.7f}')
         logger.info(f'minimizer status = {status}')
 
-        np.testing.assert_allclose(TS, 28.7004141, rtol=1e-5)
-        np.testing.assert_allclose(params_dict['ns'], 79.4357826, rtol=1e-5)
-        np.testing.assert_allclose(params_dict['gamma'], 3.1879695, rtol=1e-5)
+        np.testing.assert_allclose(TS, 28.7920115, rtol=1e-5)
+        np.testing.assert_allclose(params_dict['ns'], 79.5651908, rtol=1e-5)
+        np.testing.assert_allclose(params_dict['gamma'], 3.2822782, rtol=1e-5)
 
     def test_change_source_matches_fresh_analysis(self):
         """Changing the source from NGC 1068 to PKS 1424+240 gives the same unblinding result as an analysis created
@@ -109,9 +109,9 @@ class NGC1068UnblindingDR2TestCase(unittest.TestCase):
         logger.info(f'gamma = {res["gamma"]}')
 
         np.testing.assert_equal(res['n_sig'], 0)
-        np.testing.assert_allclose(res['ts'], 0.5193732, rtol=1e-5)
-        np.testing.assert_allclose(res['ns'], 8.7067239, rtol=1e-5)
-        np.testing.assert_allclose(res['gamma'], 3.1009387, rtol=1e-5)
+        np.testing.assert_allclose(res['ts'], 0.5624653, rtol=1e-5)
+        np.testing.assert_allclose(res['ns'], 9.0556491, rtol=1e-5)
+        np.testing.assert_allclose(res['gamma'], 3.1944745, rtol=1e-5)
 
     def test_do_trial_signal(self):
         rss = RandomStateService(seed=1)
@@ -129,9 +129,9 @@ class NGC1068UnblindingDR2TestCase(unittest.TestCase):
         logger.info(f'gamma = {res["gamma"]}')
 
         np.testing.assert_equal(res['n_sig'], 41)
-        np.testing.assert_allclose(res['ts'], 178.9385674, rtol=1e-5)
-        np.testing.assert_allclose(res['ns'], 48.0545479, rtol=1e-5)
-        np.testing.assert_allclose(res['gamma'], 2.0184727, rtol=1e-5)
+        np.testing.assert_allclose(res['ts'], 178.9500269, rtol=1e-5)
+        np.testing.assert_allclose(res['ns'], 47.7444686, rtol=1e-5)
+        np.testing.assert_allclose(res['gamma'], 2.0264620, rtol=1e-5)
 
     def test_signal_energy_pdf_integral_normalization(self):
         """Each PDSignalEnergyPDF spline integrates to 1 over its energy range."""

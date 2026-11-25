@@ -109,6 +109,10 @@ class TrueEnergyInverseCDFTestCase(unittest.TestCase):
             # A uniform distribution in log10(E) would put half of them there.
             self.assertGreater(expected, 0.6)
 
+    def test_energy_range_outside_the_binning_raises(self):
+        with self.assertRaisesRegex(ValueError, 'does not overlap the energy binning'):
+            self._make_distribution(log_e_min=3.5, log_e_max=4.0)
+
 
 if __name__ == '__main__':
     unittest.main()

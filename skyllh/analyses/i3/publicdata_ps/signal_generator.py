@@ -298,6 +298,11 @@ class PDDatasetSignalGenerator(
         # The bins the energy range overlaps, cut to the range: an energy range
         # that ends inside a bin keeps the part of the bin within it.
         m = effA.get_log10_enu_bin_mask(log_e_min, log_e_max)
+        if not np.any(m):
+            raise ValueError(
+                f'The energy range [{log_e_min:g}, {log_e_max:g}] in log10(E_nu/GeV) does not overlap the energy '
+                'binning of the effective area!'
+            )
         low_bin_edges = np.maximum(effA.log10_enu_binedges_lower[m], log_e_min)
         high_bin_edges = np.minimum(effA.log10_enu_binedges_upper[m], log_e_max)
 
