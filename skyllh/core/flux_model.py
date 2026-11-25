@@ -380,8 +380,13 @@ class EnergyFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
 
         integral = np.empty((len(E1),), dtype=np.float64)
 
+        # Profiles return arrays even for a scalar energy, but quad needs the
+        # integrand to return a float.
+        def integrand(E: float) -> float:
+            return float(np.ravel(self(E))[0])
+
         for i, (E1_i, E2_i) in enumerate(zip(E1, E2, strict=True)):
-            integral[i] = quad(self, E1_i, E2_i, full_output=True)[0]
+            integral[i] = quad(integrand, E1_i, E2_i, full_output=True)[0]
 
         return integral
 

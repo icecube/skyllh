@@ -11,6 +11,7 @@ from skyllh.core.config import (
 from skyllh.core.flux_model import (
     BoxTimeFluxProfile,
     CutoffPowerLawEnergyFluxProfile,
+    FunctionEnergyFluxProfile,
     LogParabolaPowerLawEnergyFluxProfile,
     PointSpatialFluxProfile,
     PowerLawEnergyFluxProfile,
@@ -118,6 +119,18 @@ class PowerLawEnergyFluxProfileTestCase(
         values = np.power(E / self.E0, -self.gamma)
 
         self.assertEqual(self.fluxprofile(E=E, unit=self.energy_unit), values)
+
+
+class FunctionEnergyFluxProfileTestCase(
+    unittest.TestCase,
+):
+    def test_get_integral(self):
+        # FunctionEnergyFluxProfile uses the numerical default get_integral.
+        fluxprofile = FunctionEnergyFluxProfile(function=lambda E: E**-2.0, energy_unit=units.GeV, cfg=Config())
+
+        integral = fluxprofile.get_integral(np.array([1.0, 2.0]), np.array([10.0, 4.0]))
+
+        np.testing.assert_allclose(integral, [1 - 1 / 10, 1 / 2 - 1 / 4], rtol=1e-12)
 
 
 class CutoffPowerLawEnergyFluxProfileTestCase(
