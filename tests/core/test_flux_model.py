@@ -4,6 +4,9 @@ import numpy as np
 from astropy import (
     units,
 )
+from scipy.integrate import (
+    quad,
+)
 
 from skyllh.core.config import (
     Config,
@@ -11,9 +14,11 @@ from skyllh.core.config import (
 from skyllh.core.flux_model import (
     BoxTimeFluxProfile,
     CutoffPowerLawEnergyFluxProfile,
+    EnergyFluxProfile,
     LogParabolaPowerLawEnergyFluxProfile,
     PointSpatialFluxProfile,
     PowerLawEnergyFluxProfile,
+    UnityEnergyFluxProfile,
     UnitySpatialFluxProfile,
 )
 
@@ -119,6 +124,72 @@ class PowerLawEnergyFluxProfileTestCase(
 
         self.assertEqual(self.fluxprofile(E=E, unit=self.energy_unit), values)
 
+    def _assert_inverse_integral(self, fluxprofile, gamma, rtol):
+        fluxprofile.gamma = gamma
+        u = np.linspace(0, 1, 11)
+        E1, E2 = 10.0, 10.0**3.2
+
+        E = fluxprofile.get_inverse_integral(u, E1, E2)
+
+        self.assertEqual(E.shape, u.shape)
+        frac = fluxprofile.get_integral(E1, E) / fluxprofile.get_integral(E1, E2)
+        np.testing.assert_allclose(frac, u, rtol=rtol, atol=1e-12)
+        self.assertAlmostEqual(E[0], E1)
+        self.assertAlmostEqual(E[-1], E2, delta=1e-9 * E2)
+
+    def test_get_inverse_integral(self):
+        for gamma in (-1.5, 0.0, 1.0, 2.0, 3.5):
+            with self.subTest(gamma=gamma):
+                self._assert_inverse_integral(self.fluxprofile, gamma, rtol=1e-9)
+
+    def test_get_inverse_integral_gamma_close_to_one(self):
+        # get_integral loses precision for gamma close to 1, so compare with
+        # the gamma = 1 limit, a log-uniform distribution, instead.
+        self.fluxprofile.gamma = 1.0 + 1e-12
+        u = np.linspace(0, 1, 11)
+
+        E = self.fluxprofile.get_inverse_integral(u, 10.0, 10.0**3.2)
+
+        np.testing.assert_allclose(E, 10.0 * (10.0**2.2) ** u, rtol=1e-10)
+
+    def test_get_inverse_integral_numerical_default_matches_analytic(self):
+        u = np.random.default_rng(1).uniform(size=1000)
+        E1 = np.where(u < 0.5, 10.0, 100.0)
+        E2 = np.where(u < 0.5, 20.0, 10.0**3.2)
+        for gamma in (1.0, 2.0, 3.5):
+            with self.subTest(gamma=gamma):
+                self.fluxprofile.gamma = gamma
+                E_analytic = self.fluxprofile.get_inverse_integral(u, E1, E2)
+                E_numeric = EnergyFluxProfile.get_inverse_integral(self.fluxprofile, u, E1, E2)
+                np.testing.assert_allclose(E_numeric, E_analytic, rtol=1e-5)
+
+    def test_get_inverse_integral_unit(self):
+        u = np.array([0.1, 0.5, 0.9])
+
+        E_TeV = self.fluxprofile.get_inverse_integral(u, 0.01, 1.0, unit=units.TeV)
+        E_GeV = self.fluxprofile.get_inverse_integral(u, 10.0, 1000.0)
+
+        np.testing.assert_allclose(E_TeV * 1000, E_GeV, rtol=1e-12)
+
+    def test_get_inverse_integral_invalid_args(self):
+        with self.assertRaises(ValueError):
+            self.fluxprofile.get_inverse_integral(1.5, 10.0, 100.0)
+        with self.assertRaises(ValueError):
+            self.fluxprofile.get_inverse_integral(0.5, 100.0, 10.0)
+        with self.assertRaises(ValueError):
+            self.fluxprofile.get_inverse_integral(0.5, 0.0, 10.0)
+
+
+class UnityEnergyFluxProfileTestCase(
+    unittest.TestCase,
+):
+    def test_get_inverse_integral(self):
+        fluxprofile = UnityEnergyFluxProfile(energy_unit=units.GeV, cfg=Config())
+
+        E = fluxprofile.get_inverse_integral(np.array([0, 0.25, 1]), 10.0, 50.0)
+
+        np.testing.assert_allclose(E, [10.0, 20.0, 50.0])
+
 
 class CutoffPowerLawEnergyFluxProfileTestCase(
     unittest.TestCase,
@@ -152,6 +223,18 @@ class CutoffPowerLawEnergyFluxProfileTestCase(
 
         self.assertEqual(self.fluxprofile(E=E, unit=self.energy_unit), values)
 
+    def test_get_inverse_integral(self):
+        # The cutoff profile has no analytic inverse integral, so this tests
+        # the numerical default implementation.
+        u = np.linspace(0, 1, 11)
+        E1, E2 = 1.0, 10.0
+
+        E = self.fluxprofile.get_inverse_integral(u, E1, E2)
+
+        frac = self.fluxprofile.get_integral(np.full_like(E, E1), E) / self.fluxprofile.get_integral(E1, E2)
+        np.testing.assert_allclose(frac, u, rtol=1e-4, atol=1e-12)
+        self.assertTrue(np.all(np.diff(E) > 0))
+
 
 class LogParabolaPowerLawEnergyFluxProfileTestCase(
     unittest.TestCase,
@@ -179,6 +262,88 @@ class LogParabolaPowerLawEnergyFluxProfileTestCase(
         beta = 2.5
         self.fluxprofile.beta = beta
         self.assertEqual(self.fluxprofile.beta, beta)
+
+    @staticmethod
+    def _quad_integral(fluxprofile, E1, E2):
+        """Integrates the profile with scipy's quad in ln(E), as reference."""
+        if E2 / E1 - 1 < 1e-8:
+            # quad cannot resolve such a narrow range in ln(E), but the
+            # integrand is constant over it to that precision.
+            return float(fluxprofile(E1)[0]) * (E2 - E1)
+
+        def integrand(y):
+            E = np.exp(y)
+            return float(fluxprofile(E)[0]) * E
+
+        return quad(integrand, np.log(E1), np.log(E2), epsabs=0, epsrel=1e-12, limit=500)[0]
+
+    # (alpha, beta, E1, E2) with E0 = 2.5 GeV: the peak inside the range, far
+    # tails on both sides of the peak, the beta -> 0 limit, an almost flat
+    # spectrum, where the closed form loses precision and the numerical default
+    # is used, and beta < 0, which always uses the numerical default.
+    CASES = (
+        (1.0, 2.0, 1.0, 10.0),
+        (2.0, 0.3, 1e-4, 1e-2),
+        (2.0, 0.3, 1e3, 1e5),
+        (3.0, 1.0, 1e4, 1e6),
+        (2.0, 1e-3, 10.0, 1e4),
+        (2.0, 1e-12, 10.0, 1e4),
+        (1.0, 1e-12, 10.0, 1e4),
+        (2.0, -0.05, 10.0, 1e4),
+    )
+
+    def test_get_integral(self):
+        for alpha, beta, E1, E2 in self.CASES:
+            with self.subTest(alpha=alpha, beta=beta, E1=E1, E2=E2):
+                self.fluxprofile.alpha = alpha
+                self.fluxprofile.beta = beta
+
+                integral = self.fluxprofile.get_integral(E1, E2)
+
+                np.testing.assert_allclose(integral, self._quad_integral(self.fluxprofile, E1, E2), rtol=1e-12)
+                np.testing.assert_allclose(self.fluxprofile.get_integral(E2, E1), -integral, rtol=1e-15)
+
+    def test_get_integral_beta_zero_is_power_law(self):
+        self.fluxprofile.alpha = 2.0
+        powerlaw = PowerLawEnergyFluxProfile(E0=self.E0, gamma=2.0, energy_unit=self.energy_unit, cfg=self.cfg)
+        for beta, rtol in ((0.0, 1e-14), (1e-14, 1e-12)):
+            with self.subTest(beta=beta):
+                self.fluxprofile.beta = beta
+                np.testing.assert_allclose(
+                    self.fluxprofile.get_integral(10.0, 1e4), powerlaw.get_integral(10.0, 1e4), rtol=rtol
+                )
+                u = np.array([0.1, 0.5, 0.9])
+                np.testing.assert_allclose(
+                    self.fluxprofile.get_inverse_integral(u, 10.0, 1e4),
+                    powerlaw.get_inverse_integral(u, 10.0, 1e4),
+                    rtol=rtol,
+                )
+
+    def test_get_inverse_integral(self):
+        u = np.concatenate(([0.0, 1e-12, 1e-6], np.linspace(0.01, 0.99, 25), [1 - 1e-9, 1.0]))
+        for alpha, beta, E1, E2 in self.CASES:
+            with self.subTest(alpha=alpha, beta=beta, E1=E1, E2=E2):
+                self.fluxprofile.alpha = alpha
+                self.fluxprofile.beta = beta
+                # The numerical default is accurate to about 1e-5.
+                atol = 1e-12 if (beta > 0 and alpha != 1.0) or beta >= 1e-3 else 1e-4
+
+                E = self.fluxprofile.get_inverse_integral(u, E1, E2)
+
+                self.assertEqual(E[0], E1)
+                self.assertEqual(E[-1], E2)
+                self.assertTrue(np.all(np.diff(E) >= 0))
+                total = self._quad_integral(self.fluxprofile, E1, E2)
+                frac = np.array([self._quad_integral(self.fluxprofile, E1, E_i) for E_i in E]) / total
+                np.testing.assert_allclose(frac, u, rtol=0, atol=atol)
+
+    def test_get_inverse_integral_unit(self):
+        u = np.array([0.1, 0.5, 0.9])
+
+        E_TeV = self.fluxprofile.get_inverse_integral(u, 0.01, 1.0, unit=units.TeV)
+        E_GeV = self.fluxprofile.get_inverse_integral(u, 10.0, 1000.0)
+
+        np.testing.assert_allclose(E_TeV * 1000, E_GeV, rtol=1e-12)
 
     def test_math_funciton_str(self):
         s_E0 = f'{self.E0:g} {self.energy_unit}'

@@ -322,9 +322,9 @@ class AnalysisWithEnergyRangeTestCase(unittest.TestCase):
         logger.info(f'gamma = {res_mid["gamma"]}')
 
         np.testing.assert_equal(res_mid['n_sig'], 32)
-        np.testing.assert_allclose(res_mid['ts'], 126.992327, rtol=1e-5)
-        np.testing.assert_allclose(res_mid['ns'], 35.558022, rtol=1e-5)
-        np.testing.assert_allclose(res_mid['gamma'], 1.931961, rtol=1e-5)
+        np.testing.assert_allclose(res_mid['ts'], 117.151862, rtol=1e-5)
+        np.testing.assert_allclose(res_mid['ns'], 34.224642, rtol=1e-5)
+        np.testing.assert_allclose(res_mid['gamma'], 1.922973, rtol=1e-5)
 
         # Restore original energy_range and re-run with the same seed.
         self.ana_mutable.energy_range = self.ENERGY_RANGE

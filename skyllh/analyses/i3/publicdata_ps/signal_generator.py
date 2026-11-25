@@ -1,6 +1,10 @@
+import copy
 from typing import Any, cast
 
 import numpy as np
+from astropy import (
+    units,
+)
 from scipy import (
     interpolate,
 )
@@ -17,6 +21,7 @@ from skyllh.analyses.i3.publicdata_ps.utils import (
 from skyllh.core.binning import get_bin_indices_from_binedges
 from skyllh.core.dataset import Dataset
 from skyllh.core.flux_model import (
+    EnergyFluxProfile,
     TimeFluxProfile,
 )
 from skyllh.core.livetime import (
@@ -47,6 +52,62 @@ from skyllh.core.storage import (
 from skyllh.core.utils.flux_model import (
     create_scipy_stats_rv_continuous_from_TimeFluxProfile,
 )
+
+
+class _TrueEnergyDistribution:
+    """The detectable true neutrino energy distribution of a source.
+
+    A bin of the effective area is chosen by its probability, the flux integral
+    over the bin times the bin's detection probability. Within the bin the
+    effective area is constant, so the energy follows the flux profile there
+    and is placed by the profile's inverse integral.
+    """
+
+    def __init__(
+        self,
+        cum_prob: np.ndarray,
+        log10_e_lower: np.ndarray,
+        log10_e_upper: np.ndarray,
+        energy_profile: EnergyFluxProfile,
+    ):
+        """
+        Parameters
+        ----------
+        cum_prob
+            The (n_bins+1,)-shaped cumulative probability at the bin edges,
+            from 0 to 1.
+        log10_e_lower
+            The (n_bins,)-shaped lower edges of the bins in log10(E/GeV).
+        log10_e_upper
+            The (n_bins,)-shaped upper edges of the bins in log10(E/GeV).
+        energy_profile
+            The energy flux profile the energies follow within a bin.
+        """
+        self.cum_prob = cum_prob
+        self.log10_e_lower = log10_e_lower
+        self.log10_e_upper = log10_e_upper
+        self.energy_profile = energy_profile
+
+    def get_log10_e(self, u: np.ndarray) -> np.ndarray:
+        """Returns the log10(E/GeV) values for the given probabilities ``u``,
+        which are uniformly distributed in [0, 1] when drawing energies.
+        """
+        u = np.atleast_1d(np.asarray(u, dtype=np.float64))
+        if np.any(u < 0) or np.any(u > 1):
+            raise ValueError(f'{u} is outside of the valid range [0,1].')
+
+        n_bins = self.log10_e_lower.size
+        idx = np.clip(np.searchsorted(self.cum_prob, u, side='right') - 1, 0, n_bins - 1)
+
+        # Reuse u as the integral fraction within the chosen bin.
+        bin_prob = self.cum_prob[idx + 1] - self.cum_prob[idx]
+        u_bin = np.clip((u - self.cum_prob[idx]) / bin_prob, 0, 1)
+
+        E = self.energy_profile.get_inverse_integral(
+            u_bin, 10 ** self.log10_e_lower[idx], 10 ** self.log10_e_upper[idx], unit=units.GeV
+        )
+
+        return np.clip(np.log10(E), self.log10_e_lower[idx], self.log10_e_upper[idx])
 
 
 class PDDatasetSignalGenerator(
@@ -190,7 +251,7 @@ class PDDatasetSignalGenerator(
 
         - source location in ra and dec
         - effective area
-        - log10 true energy inv CDF spline
+        - log10 true energy distribution
         - energy range correction factors
 
         """
@@ -199,7 +260,7 @@ class PDDatasetSignalGenerator(
         self._src_ra_arr = np.empty((n_sources,), dtype=np.float64)
         self._src_dec_arr = np.empty((n_sources,), dtype=np.float64)
         self._effA_arr = np.empty((n_sources,), dtype=np.object_)
-        self._log10_true_e_inv_cdf_spl_arr = np.empty((n_sources,), dtype=np.object_)
+        self._true_e_distribution_arr = np.empty((n_sources,), dtype=np.object_)
 
         for src_idx, src in enumerate(self._shg_mgr.source_list):
             self._src_ra_arr[src_idx] = src.ra
@@ -219,29 +280,18 @@ class PDDatasetSignalGenerator(
                 max_log10enu=max_log_true_e,
             )
 
-            # Build the spline for the inverse CDF of the source flux's true energy probability distribution.
+            # Build the true energy probability distribution of the source flux.
             fluxmodel = self.shg_mgr.get_fluxmodel_by_src_idx(src_idx=src_idx)
-            self._log10_true_e_inv_cdf_spl_arr[src_idx] = self._create_inv_cdf_spline(
+            self._true_e_distribution_arr[src_idx] = self._create_true_e_distribution(
                 src_idx=src_idx, fluxmodel=fluxmodel, log_e_min=min_log_true_e, log_e_max=max_log_true_e
             )
 
         # Cache correction factors so they are in sync with the current energy_range and source hypothesis.
         self._energy_range_correction_factors = self._calculate_energy_range_correction_factors()
 
-    @staticmethod
-    def _eval_spline(x, spl) -> np.ndarray:
-        """Evaluates the given spline at the given coordinates."""
-        x = np.asarray(x)
-        if np.any(x < 0) or np.any(x > 1):
-            raise ValueError(f'{x} is outside of the valid spline range. The valid range is [0,1].')
-
-        values = np.asarray(interpolate.splev(x, spl, ext=3))
-
-        return values
-
-    def _create_inv_cdf_spline(self, src_idx: int, fluxmodel, log_e_min, log_e_max):
-        """Creates a spline for the inverse cumulative distribution function of
-        the detectable true energy probability distribution.
+    def _create_true_e_distribution(self, src_idx: int, fluxmodel, log_e_min, log_e_max) -> _TrueEnergyDistribution:
+        """Creates the detectable true energy probability distribution of the
+        given source flux model.
         """
         effA = self._effA_arr[src_idx]
 
@@ -280,30 +330,15 @@ class PDDatasetSignalGenerator(
                 f'{cum_per_bin}.'
             )
 
-        # Each kept bin maps its cumulative probability interval linearly onto
-        # its own [lower, upper] edges, so an energy drawn for a bin lies
-        # inside that bin. Where dropped bins leave a gap between two kept
-        # bins, the inverse CDF jumps over it: both support points share the
-        # same cumulative probability.
-        kept_low = low_bin_edges[to_keep]
-        kept_high = high_bin_edges[to_keep]
-        cum_pts = [cum_per_bin[0]]
-        log_e_pts = [kept_low[0]]
-        for i in range(prob_per_bin.size):
-            if i > 0 and kept_low[i] > kept_high[i - 1]:
-                cum_pts.append(cum_per_bin[i])
-                log_e_pts.append(kept_low[i])
-            cum_pts.append(cum_per_bin[i + 1])
-            log_e_pts.append(kept_high[i])
-
-        # Build the linear spline (k=1) for the inverse CDF directly from its
-        # knots, as splrep would. A knot that appears twice makes the spline
-        # jump there, which splrep cannot represent.
-        cum_pts = np.asarray(cum_pts, dtype=np.float64)
-        log_e_pts = np.asarray(log_e_pts, dtype=np.float64)
-        t = np.concatenate(([cum_pts[0]], cum_pts, [cum_pts[-1]]))
-        c = np.concatenate((log_e_pts, [0.0, 0.0]))
-        return (t, c, 1)
+        # Each kept bin is drawn within its own edges, so bins dropped above
+        # receive no energies. The flux profile is copied, so the in-bin energy
+        # distribution keeps the flux parameters the bin probabilities use.
+        return _TrueEnergyDistribution(
+            cum_prob=np.asarray(cum_per_bin, dtype=np.float64),
+            log10_e_lower=low_bin_edges[to_keep],
+            log10_e_upper=high_bin_edges[to_keep],
+            energy_profile=copy.copy(fluxmodel.energy_profile),
+        )
 
     def _draw_signal_events_for_source(
         self,
@@ -311,12 +346,11 @@ class PDDatasetSignalGenerator(
         src_dec: float,
         src_ra: float,
         dec_idx: int,
-        log10_true_e_inv_cdf_spl,
+        true_e_distribution: _TrueEnergyDistribution,
         n_events: int,
     ) -> DataFieldRecordArray:
         """Generates `n_events` signal events for the given source location
-        given the given inverse cumulative density function for the
-        log10(E_true/GeV) distribution.
+        given the given true energy distribution.
 
         Note:
             Some values can be NaN in cases where a PDF was not available!
@@ -332,9 +366,8 @@ class PDDatasetSignalGenerator(
             The right-ascention of the source in radians.
         dec_idx
             The SM's declination bin index of the source's declination.
-        log10_true_e_inv_cdf_spl
-            The linear spline interpolation representation of the inverse
-            cummulative density function of the log10(E_true/GeV) distribution.
+        true_e_distribution
+            The detectable true energy distribution of the source.
         n_events
             The number of events to generate.
 
@@ -378,7 +411,7 @@ class PDDatasetSignalGenerator(
 
         sm = self.sm
 
-        log_true_e = self._eval_spline(rss.random.uniform(size=n_events), log10_true_e_inv_cdf_spl)
+        log_true_e = true_e_distribution.get_log10_e(rss.random.uniform(size=n_events))
 
         events['log_true_energy'] = log_true_e
 
@@ -499,7 +532,7 @@ class PDDatasetSignalGenerator(
         src_dec = self._src_dec_arr[src_idx]
         src_ra = self._src_ra_arr[src_idx]
 
-        log10_true_e_inv_cdf_spl = self._log10_true_e_inv_cdf_spl_arr[src_idx]
+        true_e_distribution = self._true_e_distribution_arr[src_idx]
 
         # Find the declination bin index.
         dec_idx = sm.get_true_dec_idx(src_dec)
@@ -515,7 +548,7 @@ class PDDatasetSignalGenerator(
                 src_dec=src_dec,
                 src_ra=src_ra,
                 dec_idx=dec_idx,
-                log10_true_e_inv_cdf_spl=log10_true_e_inv_cdf_spl,
+                true_e_distribution=true_e_distribution,
                 n_events=n_evt,
             )
 
