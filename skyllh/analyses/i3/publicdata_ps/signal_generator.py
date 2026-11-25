@@ -246,7 +246,6 @@ class PDDatasetSignalGenerator(
         effA = self._effA_arr[src_idx]
 
         m = (effA.log10_enu_bincenters >= log_e_min) & (effA.log10_enu_bincenters < log_e_max)
-        bin_centers = effA.log10_enu_bincenters[m]
         low_bin_edges = effA.log10_enu_binedges_lower[m]
         high_bin_edges = effA.log10_enu_binedges_upper[m]
 
@@ -277,11 +276,13 @@ class PDDatasetSignalGenerator(
                 f'{cum_per_bin}.'
             )
 
-        bin_centers = bin_centers[to_keep]
-        bin_centers = np.concatenate(([low_bin_edges[0]], bin_centers))
+        # The cumulative probability up to and including a bin is reached at
+        # that bin's upper edge, so the edges are the support points: an
+        # energy drawn for a bin then lies inside that bin.
+        bin_edges = np.concatenate(([low_bin_edges[0]], high_bin_edges[to_keep]))
 
         # Build a spline for the inverse CDF.
-        return interpolate.splrep(cum_per_bin, bin_centers, k=1, s=0)
+        return interpolate.splrep(cum_per_bin, bin_edges, k=1, s=0)
 
     def _draw_signal_events_for_source(
         self,

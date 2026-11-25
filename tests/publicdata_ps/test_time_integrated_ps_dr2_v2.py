@@ -129,9 +129,9 @@ class NGC1068UnblindingDR2TestCase(unittest.TestCase):
         logger.info(f'gamma = {res["gamma"]}')
 
         np.testing.assert_equal(res['n_sig'], 41)
-        np.testing.assert_allclose(res['ts'], 167.6219781, rtol=1e-5)
-        np.testing.assert_allclose(res['ns'], 45.4394574, rtol=1e-5)
-        np.testing.assert_allclose(res['gamma'], 2.0254487, rtol=1e-5)
+        np.testing.assert_allclose(res['ts'], 182.4533678, rtol=1e-5)
+        np.testing.assert_allclose(res['ns'], 51.7331653, rtol=1e-5)
+        np.testing.assert_allclose(res['gamma'], 2.0498842, rtol=1e-5)
 
     def test_signal_energy_pdf_integral_normalization(self):
         """Each PDSignalEnergyPDF spline integrates to 1 over its energy range."""
