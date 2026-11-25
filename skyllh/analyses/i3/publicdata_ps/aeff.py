@@ -156,17 +156,12 @@ class PDAeff:
         # Pre-calculate detection probabilities for a certain neutrino
         # declination if requested.
         if src_dec is not None:
-            if min_log10enu is None:
-                min_log10enu = self._log10_enu_binedges_lower[0]
-            else:
-                min_log10enu = max(self._log10_enu_binedges_lower[0], min_log10enu)
+            lowest = float(self._log10_enu_binedges_lower[0])
+            highest = float(self._log10_enu_binedges_upper[-1])
+            range_min = lowest if min_log10enu is None else max(lowest, min_log10enu)
+            range_max = highest if max_log10enu is None else min(highest, max_log10enu)
 
-            if max_log10enu is None:
-                max_log10enu = self._log10_enu_binedges_upper[-1]
-            else:
-                max_log10enu = min(self._log10_enu_binedges_upper[-1], max_log10enu)
-
-            m = self.get_log10_enu_bin_mask(min_log10enu, max_log10enu)
+            m = self.get_log10_enu_bin_mask(range_min, range_max)
             low_bin_edges = self._log10_enu_binedges_lower[m]
             high_bin_edges = self._log10_enu_binedges_upper[m]
 

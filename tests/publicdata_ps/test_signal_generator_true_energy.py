@@ -29,7 +29,7 @@ class TrueEnergyInverseCDFTestCase(unittest.TestCase):
             det_prob=self.DET_PROB[mask],
         )
         gen = object.__new__(PDDatasetSignalGenerator)
-        gen._effA_arr = [effA]
+        gen._effA_arr = np.array([effA], dtype=np.object_)
         fluxmodel = types.SimpleNamespace(energy_profile=_FlatEnergyProfile())
         return gen._create_inv_cdf_spline(src_idx=0, fluxmodel=fluxmodel, log_e_min=log_e_min, log_e_max=log_e_max)
 
@@ -41,7 +41,7 @@ class TrueEnergyInverseCDFTestCase(unittest.TestCase):
         spl = self._make_spline(log_e_min=2.1, log_e_max=2.7)
         rng = np.random.default_rng(2)
 
-        log10_e = interpolate.splev(rng.uniform(size=200_000), spl)
+        log10_e = np.asarray(interpolate.splev(rng.uniform(size=200_000), spl))
 
         self.assertAlmostEqual(log10_e.min(), 2.1, delta=1e-3)
         self.assertAlmostEqual(log10_e.max(), 2.7, delta=1e-3)
@@ -55,7 +55,7 @@ class TrueEnergyInverseCDFTestCase(unittest.TestCase):
         spl = self._make_spline()
         cum = np.concatenate(([0.0], np.cumsum(self._bin_prob())))
 
-        log10_e = interpolate.splev(cum, spl)
+        log10_e = np.asarray(interpolate.splev(cum, spl))
 
         np.testing.assert_allclose(log10_e, self.EDGES, atol=1e-12)
 
@@ -63,7 +63,7 @@ class TrueEnergyInverseCDFTestCase(unittest.TestCase):
         spl = self._make_spline()
         rng = np.random.default_rng(1)
 
-        log10_e = interpolate.splev(rng.uniform(size=200_000), spl)
+        log10_e = np.asarray(interpolate.splev(rng.uniform(size=200_000), spl))
 
         self.assertGreaterEqual(log10_e.min(), self.EDGES[0])
         self.assertLessEqual(log10_e.max(), self.EDGES[-1])
