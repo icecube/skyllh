@@ -103,8 +103,9 @@ class TestWGETDatasetTransfer(unittest.TestCase):
 
     def test_transfer(self):
         assert self.ds.origin is not None
-        password = os.environ.get('ICECUBE_PASSWORD', None)
-        if password is None:
+        # An unavailable GitHub secret (e.g. on PRs from forks) expands to ''.
+        password = os.environ.get('ICECUBE_PASSWORD')
+        if not password:
             self.skipTest(f'No password for username "{self.ds.origin.username}" provided via the environment!')
 
         if not self.ds.make_data_available(
@@ -141,8 +142,9 @@ class TestURLRetrieveDatasetTransfer(
 
     def test_transfer(self):
         assert self.ds.origin is not None
-        password = os.environ.get('ICECUBE_PASSWORD', None)
-        if password is None:
+        # An unavailable GitHub secret (e.g. on PRs from forks) expands to ''.
+        password = os.environ.get('ICECUBE_PASSWORD')
+        if not password:
             self.skipTest(f'No password for username "{self.ds.origin.username}" provided via the environment!')
 
         if not self.ds.make_data_available(
