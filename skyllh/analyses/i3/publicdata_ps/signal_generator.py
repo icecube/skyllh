@@ -245,12 +245,15 @@ class PDDatasetSignalGenerator(
         """
         effA = self._effA_arr[src_idx]
 
-        m = (effA.log10_enu_bincenters >= log_e_min) & (effA.log10_enu_bincenters < log_e_max)
-        bin_centers = effA.log10_enu_bincenters[m]
-        low_bin_edges = effA.log10_enu_binedges_lower[m]
-        high_bin_edges = effA.log10_enu_binedges_upper[m]
+        # The bins the energy range overlaps, cut to the range: an energy range
+        # that ends inside a bin keeps the part of the bin within it.
+        m = effA.get_log10_enu_bin_mask(log_e_min, log_e_max)
+        low_bin_edges = np.maximum(effA.log10_enu_binedges_lower[m], log_e_min)
+        high_bin_edges = np.minimum(effA.log10_enu_binedges_upper[m], log_e_max)
 
-        # Flux probability P(E_nu | gamma) per bin.
+        # Flux probability P(E_nu | gamma) per bin. The detection probability
+        # stays that of the whole bin, so a cut bin is weighted by the flux in
+        # its remaining part, as in _calculate_flux_weight.
         flux_prob = fluxmodel.energy_profile.get_integral(
             E1=10**low_bin_edges, E2=10**high_bin_edges
         ) / fluxmodel.energy_profile.get_integral(E1=10 ** low_bin_edges[0], E2=10 ** high_bin_edges[-1])
@@ -277,11 +280,30 @@ class PDDatasetSignalGenerator(
                 f'{cum_per_bin}.'
             )
 
-        bin_centers = bin_centers[to_keep]
-        bin_centers = np.concatenate(([low_bin_edges[0]], bin_centers))
+        # Each kept bin maps its cumulative probability interval linearly onto
+        # its own [lower, upper] edges, so an energy drawn for a bin lies
+        # inside that bin. Where dropped bins leave a gap between two kept
+        # bins, the inverse CDF jumps over it: both support points share the
+        # same cumulative probability.
+        kept_low = low_bin_edges[to_keep]
+        kept_high = high_bin_edges[to_keep]
+        cum_pts = [cum_per_bin[0]]
+        log_e_pts = [kept_low[0]]
+        for i in range(prob_per_bin.size):
+            if i > 0 and kept_low[i] > kept_high[i - 1]:
+                cum_pts.append(cum_per_bin[i])
+                log_e_pts.append(kept_low[i])
+            cum_pts.append(cum_per_bin[i + 1])
+            log_e_pts.append(kept_high[i])
 
-        # Build a spline for the inverse CDF.
-        return interpolate.splrep(cum_per_bin, bin_centers, k=1, s=0)
+        # Build the linear spline (k=1) for the inverse CDF directly from its
+        # knots, as splrep would. A knot that appears twice makes the spline
+        # jump there, which splrep cannot represent.
+        cum_pts = np.asarray(cum_pts, dtype=np.float64)
+        log_e_pts = np.asarray(log_e_pts, dtype=np.float64)
+        t = np.concatenate(([cum_pts[0]], cum_pts, [cum_pts[-1]]))
+        c = np.concatenate((log_e_pts, [0.0, 0.0]))
+        return (t, c, 1)
 
     def _draw_signal_events_for_source(
         self,
