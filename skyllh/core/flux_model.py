@@ -385,6 +385,127 @@ class EnergyFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
 
         return integral
 
+    #: The number of grid points per energy range used by the numerical default
+    #: implementation of :meth:`get_inverse_integral`.
+    inverse_integral_n_grid = 1000
+
+    def _prepare_inverse_integral_args(
+        self,
+        u: float | np.ndarray,
+        E1: float | np.ndarray,
+        E2: float | np.ndarray,
+        unit: units.UnitBase | None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
+        """Validates and broadcasts the arguments of :meth:`get_inverse_integral`
+        and converts the energies into the energy unit of this profile.
+
+        Returns
+        -------
+        u, E1, E2
+            The broadcast (n,)-shaped arrays, with E1 and E2 in the energy unit
+            of this profile.
+        unit_conv_factor
+            The factor converting from the given unit into the energy unit of
+            this profile.
+        """
+        u, E1, E2 = np.broadcast_arrays(
+            np.atleast_1d(np.asarray(u, dtype=np.float64)),
+            np.atleast_1d(np.asarray(E1, dtype=np.float64)),
+            np.atleast_1d(np.asarray(E2, dtype=np.float64)),
+        )
+        if u.ndim != 1:
+            raise ValueError(f'The arguments u, E1, and E2 must broadcast to a 1-dimensional shape, not {u.shape}!')
+        if np.any(~np.isfinite(u)) or np.any(u < 0) or np.any(u > 1):
+            raise ValueError('All values of u must lie within [0, 1]!')
+        if np.any(~np.isfinite(E1)) or np.any(~np.isfinite(E2)):
+            raise ValueError('All values of E1 and E2 must be finite!')
+        if np.any(E1 > E2):
+            raise ValueError('All values of E1 must be smaller than or equal to the values of E2!')
+
+        unit_conv_factor = 1.0
+        if (unit is not None) and (unit != self._energy_unit):
+            unit_conv_factor = float(unit.to(self._energy_unit))  # pyright: ignore[reportArgumentType]
+
+        return (u, E1 * unit_conv_factor, E2 * unit_conv_factor, unit_conv_factor)
+
+    def get_inverse_integral(
+        self,
+        u: float | np.ndarray,
+        E1: float | np.ndarray,
+        E2: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
+        r"""Computes the energy :math:`E \in [E_1, E_2]` at which the integral of
+        this energy flux profile from :math:`E_1` reaches the fraction ``u`` of
+        its integral over :math:`[E_1, E_2]`:
+
+        .. math::
+
+            \int_{E_1}^{E} \Phi(E') \mathrm{d}E' = u \int_{E_1}^{E_2} \Phi(E') \mathrm{d}E'
+
+        Hence, for ``u`` uniformly distributed in [0, 1], the returned energies
+        follow this energy flux profile within [E1, E2].
+
+        .. note::
+
+            This default implementation tabulates the cumulative integral of the
+            profile on a grid of :attr:`inverse_integral_n_grid` points per
+            energy range, which is logarithmic for E1 > 0, and interpolates it
+            linearly. Derived classes should reimplement this method if an
+            analytic form is available.
+
+        Parameters
+        ----------
+        u
+            The integral fractions, each within [0, 1].
+        E1
+            The lower energy bound of the integration.
+        E2
+            The upper energy bound of the integration.
+        unit
+            The unit of the given energies and the returned energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        E
+            The (n,)-shaped numpy ndarray holding the energies, where n is the
+            broadcast length of ``u``, ``E1``, and ``E2``.
+
+        Raises
+        ------
+        ValueError
+            If the profile integrates to zero over an energy range with E1 < E2.
+        """
+        (u, E1, E2, unit_conv_factor) = self._prepare_inverse_integral_args(u, E1, E2, unit)
+
+        E = np.empty_like(u)
+
+        # Tabulate the cumulative integral once per distinct energy range.
+        ranges, range_idxs = np.unique(np.stack((E1, E2), axis=1), axis=0, return_inverse=True)
+        range_idxs = range_idxs.ravel()
+        for idx, (E1_i, E2_i) in enumerate(ranges):
+            m = range_idxs == idx
+            if E1_i == E2_i:
+                E[m] = E1_i
+                continue
+
+            if E1_i > 0:
+                grid = np.geomspace(E1_i, E2_i, self.inverse_integral_n_grid)
+            else:
+                grid = np.linspace(E1_i, E2_i, self.inverse_integral_n_grid)
+            values = np.asarray(self(grid), dtype=np.float64)
+            cum = np.concatenate(([0.0], np.cumsum(0.5 * (values[1:] + values[:-1]) * np.diff(grid))))
+            if not cum[-1] > 0:
+                raise ValueError(
+                    f'The energy flux profile {classname(self)} does not have a positive integral over the energy '
+                    f'range [{E1_i:g}, {E2_i:g}] {self._energy_unit}!'
+                )
+            E[m] = np.interp(u[m], cum / cum[-1], grid)
+
+        return E / unit_conv_factor
+
 
 class UnityEnergyFluxProfile(EnergyFluxProfile):
     """Energy flux profile for the constant function 1."""
@@ -463,6 +584,41 @@ class UnityEnergyFluxProfile(EnergyFluxProfile):
         integral = E2 - E1
 
         return integral
+
+    def get_inverse_integral(
+        self,
+        u: float | np.ndarray,
+        E1: float | np.ndarray,
+        E2: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
+        """Computes the energy at which the integral of this energy flux profile
+        from ``E1`` reaches the fraction ``u`` of its integral over
+        [``E1``, ``E2``], which by definition is ``E1 + u * (E2 - E1)``.
+
+        Parameters
+        ----------
+        u
+            The integral fractions, each within [0, 1].
+        E1
+            The lower energy bound of the integration.
+        E2
+            The upper energy bound of the integration.
+        unit
+            The unit of the given energies and the returned energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        E
+            The (n,)-shaped numpy ndarray holding the energies.
+        """
+        (u, E1, E2, unit_conv_factor) = self._prepare_inverse_integral_args(u, E1, E2, unit)
+
+        E = E1 + u * (E2 - E1)
+
+        return E / unit_conv_factor
 
 
 class PowerLawEnergyFluxProfile(
@@ -602,6 +758,62 @@ class PowerLawEnergyFluxProfile(
         integral = np.power(self._E0, gamma) / (1 - gamma) * (np.power(E2, 1 - gamma) - np.power(E1, 1 - gamma))
 
         return integral
+
+    def get_inverse_integral(
+        self,
+        u: float | np.ndarray,
+        E1: float | np.ndarray,
+        E2: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
+        r"""Computes the energy at which the integral of this power-law energy
+        flux profile from ``E1`` reaches the fraction ``u`` of its integral over
+        [``E1``, ``E2``]:
+
+        .. math::
+
+            E = E_1 \left[ 1 + u \left( (E_2/E_1)^{1-\gamma} - 1 \right) \right]^{1/(1-\gamma)}
+
+        which becomes :math:`E_1 (E_2/E_1)^u` for :math:`\gamma = 1`.
+
+        Parameters
+        ----------
+        u
+            The integral fractions, each within [0, 1].
+        E1
+            The lower energy bound of the integration. It must be positive.
+        E2
+            The upper energy bound of the integration.
+        unit
+            The unit of the given energies and the returned energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        E
+            The (n,)-shaped numpy ndarray holding the energies.
+        """
+        # Derived profiles that change the function, e.g. by a cutoff, are no
+        # pure power law, so they use the numerical default implementation.
+        if type(self).__call__ is not PowerLawEnergyFluxProfile.__call__:
+            return super().get_inverse_integral(u, E1, E2, unit=unit)
+
+        (u, E1, E2, unit_conv_factor) = self._prepare_inverse_integral_args(u, E1, E2, unit)
+        if np.any(E1 <= 0):
+            raise ValueError('All values of E1 must be positive for a power-law energy flux profile!')
+
+        a = 1 - self._gamma
+        log_ratio = np.log(E2 / E1)
+
+        # expm1 and log1p keep the result accurate for a close to 0 and for
+        # narrow energy ranges.
+        E = E1 * np.exp(u * log_ratio) if a == 0 else E1 * np.exp(np.log1p(u * np.expm1(a * log_ratio)) / a)
+
+        # Rounding must not push the energies outside [E1, E2].
+        E = np.clip(E, E1, E2)
+
+        return E / unit_conv_factor
 
 
 class CutoffPowerLawEnergyFluxProfile(
@@ -847,6 +1059,263 @@ class LogParabolaPowerLawEnergyFluxProfile(
         values = np.power(E / self._E0, -self._alpha - self._beta * np.log(E / self._E0))
 
         return values
+
+    #: The largest ratio between the summed magnitudes of the terms of the
+    #: closed-form integral and the integral itself. Above it, rounding errors
+    #: could become significant, and the numerical default is used instead.
+    _closed_form_max_cancellation = 1e4
+
+    def _g(self, y: np.ndarray) -> np.ndarray:
+        r"""The exponent :math:`g(y) = (1 - \alpha) y - \beta y^2` of the
+        integrand :math:`\Phi(E) \mathrm{d}E = E_0 e^{g(y)} \mathrm{d}y` with
+        :math:`y = \ln(E / E_0)`.
+        """
+        return y * ((1 - self._alpha) - self._beta * y)
+
+    def _get_scaled_y_integral(
+        self, y_a: np.ndarray, y_b: np.ndarray, g_ref: np.ndarray | None = None
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        r"""Computes the integral of :math:`e^{g(y)}` over [``y_a``, ``y_b``],
+        with ``y_a <= y_b``, for :math:`\beta > 0`.
+
+        Completing the square gives a Gaussian in y with mean
+        :math:`\mu = (1 - \alpha) / (2\beta)`, so the integral is a difference
+        of normal tail probabilities. Each tail is evaluated as
+        :math:`\frac{1}{2} \mathrm{erfcx}(x) e^{g(y)}` with
+        :math:`x = \pm\sqrt{\beta}(y - \mu)`, which neither overflows nor
+        underflows for small :math:`\beta`.
+
+        Returns
+        -------
+        integral
+            The integral divided by :math:`\sqrt{\pi / \beta} e^{g_\mathrm{ref}}`.
+        cancellation
+            The summed magnitudes of the terms divided by the integral.
+        g_ref
+            The scale exponent, the maximum of g over the range unless given.
+        """
+        beta = self._beta
+        mu = (1 - self._alpha) / (2 * beta)
+        sqrt_beta = np.sqrt(beta)
+
+        x_a = sqrt_beta * (y_a - mu)
+        x_b = sqrt_beta * (y_b - mu)
+        g_a = self._g(y_a)
+        g_b = self._g(y_b)
+
+        straddle = (x_a < 0) & (x_b > 0)
+        # g(mu) = beta * mu^2.
+        g_mu = np.where(straddle, beta * mu**2, -np.inf)
+        if g_ref is None:
+            g_ref = np.maximum(np.maximum(g_a, g_b), g_mu)
+
+        with np.errstate(over='ignore', divide='ignore', invalid='ignore'):
+            # The tails below (L) and above (U) y, both times exp(beta mu^2).
+            L_a = 0.5 * scipy.special.erfcx(-x_a) * np.exp(g_a - g_ref)
+            L_b = 0.5 * scipy.special.erfcx(-x_b) * np.exp(g_b - g_ref)
+            U_a = 0.5 * scipy.special.erfcx(x_a) * np.exp(g_a - g_ref)
+            U_b = 0.5 * scipy.special.erfcx(x_b) * np.exp(g_b - g_ref)
+            M = np.exp(g_mu - g_ref)
+
+            lower = x_b <= 0
+            upper = x_a >= 0
+            integral = np.where(lower, L_b - L_a, np.where(upper, U_a - U_b, M - L_a - U_b))
+            terms = np.where(lower, L_a + L_b, np.where(upper, U_a + U_b, M + L_a + U_b))
+            cancellation = np.where(y_a == y_b, 1.0, terms / integral)
+
+        return (integral, cancellation, g_ref)
+
+    def _get_gaussian_inverse_start(self, u: np.ndarray, y_a: np.ndarray, y_b: np.ndarray) -> np.ndarray:
+        """Returns a start value for the inverse integral in y, the inverse of
+        the Gaussian CDF in y, evaluated on the side of the mean where the
+        normal probabilities keep their precision. Where these probabilities
+        underflow, which happens for small beta, it returns the linear guess.
+        """
+        mu = (1 - self._alpha) / (2 * self._beta)
+        sigma = 1 / np.sqrt(2 * self._beta)
+        z_a = (y_a - mu) / sigma
+        z_b = (y_b - mu) / sigma
+
+        # Mirror ranges above the mean, so the probabilities are lower tails.
+        upper = z_a > 0
+        p_a = np.where(upper, scipy.special.ndtr(-z_b), scipy.special.ndtr(z_a))
+        p_b = np.where(upper, scipy.special.ndtr(-z_a), scipy.special.ndtr(z_b))
+        with np.errstate(divide='ignore', invalid='ignore'):
+            z = scipy.special.ndtri(np.where(upper, p_b - u * (p_b - p_a), p_a + u * (p_b - p_a)))
+        y = mu + sigma * np.where(upper, -z, z)
+
+        y_linear = y_a + u * (y_b - y_a)
+        return np.where(np.isfinite(y) & (y >= y_a) & (y <= y_b) & (p_b > p_a), y, y_linear)
+
+    def _get_numerical_y_integral(self, y_a: np.ndarray, y_b: np.ndarray) -> np.ndarray:
+        r"""Integrates :math:`e^{g(y)}` over [``y_a``, ``y_b``] numerically."""
+        return np.array(
+            [
+                quad(lambda y: float(np.exp(self._g(y))), y_a_i, y_b_i, epsabs=0, epsrel=1e-12, limit=200)[0]
+                for (y_a_i, y_b_i) in zip(y_a, y_b, strict=True)
+            ],
+            dtype=np.float64,
+        )
+
+    def get_integral(
+        self,
+        E1: float | np.ndarray,
+        E2: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
+        r"""Computes the integral of this log-parabola energy flux profile in the
+        range ``[E1, E2]``.
+
+        With :math:`y = \ln(E / E_0)` the integrand is a Gaussian in y, so the
+        integral has a closed form in terms of the error function. For
+        :math:`\beta = 0` it is the power-law integral with
+        :math:`\gamma = \alpha`. For :math:`\beta < 0`, and where the closed
+        form would lose precision to cancellation, which happens for an almost
+        flat spectrum, the numerical default implementation is used.
+
+        Parameters
+        ----------
+        E1
+            The lower energy bound of the integration. It must be positive.
+        E2
+            The upper energy bound of the integration. It must be positive.
+        unit
+            The unit of the given energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        integral
+            The integral values of the given integral ranges.
+        """
+        E1, E2 = np.broadcast_arrays(
+            np.atleast_1d(np.asarray(E1, dtype=np.float64)), np.atleast_1d(np.asarray(E2, dtype=np.float64))
+        )
+        if (unit is not None) and (unit != self._energy_unit):
+            unit_conv_factor = float(unit.to(self._energy_unit))  # pyright: ignore[reportArgumentType]
+            E1 = E1 * unit_conv_factor
+            E2 = E2 * unit_conv_factor
+        if np.any(E1 <= 0) or np.any(E2 <= 0):
+            raise ValueError('All values of E1 and E2 must be positive for a log-parabola energy flux profile!')
+
+        # Integrate over the ordered range and restore the sign afterwards.
+        sign = np.where(E1 <= E2, 1.0, -1.0)
+        y_a = np.log(np.minimum(E1, E2) / self._E0)
+        y_b = np.log(np.maximum(E1, E2) / self._E0)
+
+        if self._beta < 0:
+            return sign * self._E0 * self._get_numerical_y_integral(y_a, y_b)
+
+        if self._beta == 0:
+            a = 1 - self._alpha
+            integral = y_b - y_a if a == 0 else np.exp(a * y_a) * np.expm1(a * (y_b - y_a)) / a
+            return sign * self._E0 * integral
+
+        (integral, cancellation, g_ref) = self._get_scaled_y_integral(y_a, y_b)
+        integral = self._E0 * np.sqrt(np.pi / self._beta) * np.exp(g_ref) * integral
+
+        m = ~(cancellation <= self._closed_form_max_cancellation)
+        if np.any(m):
+            integral[m] = self._E0 * self._get_numerical_y_integral(y_a[m], y_b[m])
+
+        return sign * integral
+
+    def get_inverse_integral(
+        self,
+        u: float | np.ndarray,
+        E1: float | np.ndarray,
+        E2: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
+        r"""Computes the energy at which the integral of this log-parabola energy
+        flux profile from ``E1`` reaches the fraction ``u`` of its integral over
+        [``E1``, ``E2``].
+
+        The closed-form integral (see :meth:`get_integral`) is inverted with
+        Newton's method, falling back to bisection, to machine precision. For
+        :math:`\beta = 0` the power-law inverse is used. For
+        :math:`\beta < 0`, and where the closed form would lose precision to
+        cancellation, the numerical default implementation is used.
+
+        Parameters
+        ----------
+        u
+            The integral fractions, each within [0, 1].
+        E1
+            The lower energy bound of the integration. It must be positive.
+        E2
+            The upper energy bound of the integration.
+        unit
+            The unit of the given energies and the returned energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        E
+            The (n,)-shaped numpy ndarray holding the energies.
+        """
+        (u, E1, E2, unit_conv_factor) = self._prepare_inverse_integral_args(u, E1, E2, unit)
+        if np.any(E1 <= 0):
+            raise ValueError('All values of E1 must be positive for a log-parabola energy flux profile!')
+
+        if self._beta < 0:
+            return EnergyFluxProfile.get_inverse_integral(self, u, E1, E2) / unit_conv_factor
+
+        y_a = np.log(E1 / self._E0)
+        y_b = np.log(E2 / self._E0)
+
+        if self._beta == 0:
+            a = 1 - self._alpha
+            y = y_a + u * (y_b - y_a) if a == 0 else y_a + np.log1p(u * np.expm1(a * (y_b - y_a))) / a
+            return np.clip(self._E0 * np.exp(y), E1, E2) / unit_conv_factor
+
+        (total, cancellation, g_ref) = self._get_scaled_y_integral(y_a, y_b)
+        target = u * total
+        deriv_factor = np.sqrt(self._beta / np.pi)
+
+        # Solve log(integral from y_a to y) = log(target) for y with Newton's
+        # method, falling back to bisection. The start value is the inverse of
+        # the Gaussian CDF where it is representable, so Newton's method only
+        # needs to polish it to machine precision.
+        lo = y_a.copy()
+        hi = y_b.copy()
+        y = self._get_gaussian_inverse_start(u, y_a, y_b)
+        # Ranges where the closed form loses precision use the numerical
+        # default below instead.
+        use_numerical = ~(cancellation <= self._closed_form_max_cancellation) & (E1 < E2)
+        active = (u > 0) & (u < 1) & (y_a < y_b) & ~use_numerical
+        with np.errstate(divide='ignore'):
+            log_target = np.log(target)
+        for _ in range(100):
+            if not np.any(active):
+                break
+            ya, yy, lt = y_a[active], y[active], log_target[active]
+            integral = self._get_scaled_y_integral(ya, yy, g_ref=g_ref[active])[0]
+            with np.errstate(over='ignore', divide='ignore', invalid='ignore'):
+                f = np.log(integral) - lt
+                y_new = yy - f * integral / (deriv_factor * np.exp(self._g(yy) - g_ref[active]))
+            lo_a = np.where(f < 0, yy, lo[active])
+            hi_a = np.where(f > 0, yy, hi[active])
+            # A y whose residual is at the rounding level is the solution.
+            eps = np.finfo(np.float64).eps
+            solved = np.abs(f) <= 16 * eps
+            outside = ~np.isfinite(y_new) | (y_new < lo_a) | (y_new > hi_a)
+            y_new = np.where(solved, yy, np.where(outside, 0.5 * (lo_a + hi_a), y_new))
+            converged = solved | (np.abs(y_new - yy) <= 4 * eps * np.maximum(1, np.abs(yy)))
+            lo[active], hi[active], y[active] = lo_a, hi_a, y_new
+            active[np.flatnonzero(active)[converged]] = False
+
+        E = np.clip(self._E0 * np.exp(y), E1, E2)
+        E = np.where(u == 0, E1, np.where(u == 1, E2, E))
+
+        if np.any(use_numerical):
+            E[use_numerical] = EnergyFluxProfile.get_inverse_integral(
+                self, u[use_numerical], E1[use_numerical], E2[use_numerical]
+            )
+
+        return E / unit_conv_factor
 
 
 class PhotosplineEnergyFluxProfile(

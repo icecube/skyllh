@@ -330,26 +330,6 @@ class PDSignalEnergyPDFSet(  # pyright: ignore[reportIncompatibleMethodOverride]
         xvals_binedges = ds.get_binning_definition('log_energy').binedges
         xvals = get_bincenters_from_binedges(xvals_binedges)
 
-        # Calculate the neutrino enegry bin widths in GeV.
-        d_enu = np.diff(true_enu_binedges)
-        self._logger.debug(f'dE_nu = {d_enu}')
-
-        # Calculate the probability to detect a neutrino of energy
-        # E_nu given a neutrino declination: p(E_nu|dec).
-        det_prob = aeff.get_detection_prob_for_decnu(
-            decnu=src_dec,
-            enu_min=true_enu_binedges[:-1],
-            enu_max=true_enu_binedges[1:],
-            enu_range_min=true_enu_binedges[0],
-            enu_range_max=true_enu_binedges[-1],
-        )
-
-        det_prob_sum = np.sum(det_prob)
-        self._logger.debug(f'det_prob = {det_prob}, sum = {det_prob_sum}')
-
-        if not np.isclose(det_prob_sum, 1, rtol=1e-3, atol=0):
-            self._logger.warning(f'The sum of the detection probabilities is not unity! It is {det_prob_sum}.')
-
         psi_edges_bw = sm.psi_upper_edges - sm.psi_lower_edges
         ang_err_bw = sm.ang_err_upper_edges - sm.ang_err_lower_edges
 
@@ -364,16 +344,22 @@ class PDSignalEnergyPDFSet(  # pyright: ignore[reportIncompatibleMethodOverride]
                 f'Generate signal energy PDF for parameters {gridparams} in {len(valid_true_e_idxs)} E_nu bins.'
             )
 
-            # Calculate the flux probability p(E_nu|gamma).
-            flux_prob = my_fluxmodel.energy_profile.get_integral(
-                true_enu_binedges_lower, true_enu_binedges_upper
-            ) / my_fluxmodel.energy_profile.get_integral(true_enu_binedges[0], true_enu_binedges[-1])
-            if not np.isclose(np.sum(flux_prob), 1):
-                self._logger.warning(f'The sum of the flux probabilities is not unity! It is {np.sum(flux_prob)}.')
-
-            self._logger.debug(f'flux_prob = {flux_prob}, sum = {np.sum(flux_prob)}')
-
-            p = flux_prob * det_prob
+            # Calculate the detectable flux per true neutrino energy bin,
+            # sum_i A_i * integral of the flux over the bin's overlap with
+            # effective-area bin i. This is the same model the signal
+            # generator injects, also for bins that cover several
+            # effective-area bins or only part of one.
+            p = aeff.get_detectable_flux_for_decnu(
+                decnu=src_dec,
+                enu_min=true_enu_binedges_lower,
+                enu_max=true_enu_binedges_upper,
+                energy_profile=my_fluxmodel.energy_profile,
+            )
+            if not np.sum(p) > 0:
+                raise ValueError(
+                    f'The detectable flux for the declination {src_dec:g} radians is zero over the true neutrino '
+                    f'energy range [{true_enu_binedges[0]:g}, {true_enu_binedges[-1]:g}] GeV!'
+                )
 
             true_e_prob = p / np.sum(p)
 

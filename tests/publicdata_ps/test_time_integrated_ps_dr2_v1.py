@@ -67,9 +67,9 @@ class NGC1068UnblindingDR2TestCase(unittest.TestCase):
         logger.info(f'gamma_fit = {params_dict["gamma"]:.7f}')
         logger.info(f'minimizer status = {status}')
 
-        np.testing.assert_allclose(TS, 29.1534647, rtol=1e-5)
-        np.testing.assert_allclose(params_dict['ns'], 80.0936681, rtol=1e-5)
-        np.testing.assert_allclose(params_dict['gamma'], 3.2088478, rtol=1e-5)
+        np.testing.assert_allclose(TS, 29.1573831, rtol=1e-5)
+        np.testing.assert_allclose(params_dict['ns'], 80.0916509, rtol=1e-5)
+        np.testing.assert_allclose(params_dict['gamma'], 3.2898697, rtol=1e-5)
 
     def test_do_trial_background(self):
         rss = RandomStateService(seed=1)
@@ -87,9 +87,9 @@ class NGC1068UnblindingDR2TestCase(unittest.TestCase):
         logger.info(f'gamma = {res["gamma"]}')
 
         np.testing.assert_equal(res['n_sig'], 0)
-        np.testing.assert_allclose(res['ts'], 0.5616415, rtol=1e-5)
-        np.testing.assert_allclose(res['ns'], 9.0536290, rtol=1e-5)
-        np.testing.assert_allclose(res['gamma'], 3.1219786, rtol=1e-5)
+        np.testing.assert_allclose(res['ts'], 0.5875451, rtol=1e-5)
+        np.testing.assert_allclose(res['ns'], 9.2447350, rtol=1e-5)
+        np.testing.assert_allclose(res['gamma'], 3.1981369, rtol=1e-5)
 
     def test_do_trial_signal(self):
         rss = RandomStateService(seed=1)
@@ -107,9 +107,9 @@ class NGC1068UnblindingDR2TestCase(unittest.TestCase):
         logger.info(f'gamma = {res["gamma"]}')
 
         np.testing.assert_equal(res['n_sig'], 41)
-        np.testing.assert_allclose(res['ts'], 189.0684308, rtol=1e-5)
-        np.testing.assert_allclose(res['ns'], 41.9057881, rtol=1e-5)
-        np.testing.assert_allclose(res['gamma'], 1.9499992, rtol=1e-5)
+        np.testing.assert_allclose(res['ts'], 204.6471620, rtol=1e-5)
+        np.testing.assert_allclose(res['ns'], 48.3818369, rtol=1e-5)
+        np.testing.assert_allclose(res['gamma'], 1.9887498, rtol=1e-5)
 
     def test_signal_energy_pdf_integral_normalization(self):
         """Each PDSignalEnergyPDF spline integrates to 1 over its energy range."""
