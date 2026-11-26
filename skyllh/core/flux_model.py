@@ -380,8 +380,13 @@ class EnergyFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
 
         integral = np.empty((len(E1),), dtype=np.float64)
 
+        # Profiles return arrays even for a scalar energy, but quad needs the
+        # integrand to return a float.
+        def integrand(E: float) -> float:
+            return float(np.ravel(self(E))[0])
+
         for i, (E1_i, E2_i) in enumerate(zip(E1, E2, strict=True)):
-            integral[i] = quad(self, E1_i, E2_i, full_output=True)[0]
+            integral[i] = quad(integrand, E1_i, E2_i, full_output=True)[0]
 
         return integral
 
@@ -594,12 +599,30 @@ class PowerLawEnergyFluxProfile(
 
         gamma = self._gamma
 
+        # ln(E2/E1) as log1p((E2 - E1)/E1) keeps its precision for narrow
+        # ranges, where the ratio E2/E1 would be rounded close to 1.
+        def log_ratio(E1, E2):
+            return np.log1p((E2 - E1) / E1)
+
         # Handle special case for gamma = 1.
         if gamma == 1:
-            integral = self._E0 * np.log(E2 / E1)
+            integral = self._E0 * log_ratio(E1, E2)
             return integral
 
-        integral = np.power(self._E0, gamma) / (1 - gamma) * (np.power(E2, 1 - gamma) - np.power(E1, 1 - gamma))
+        # E0^gamma / a * (E2^a - E1^a) with a = 1 - gamma equals
+        # E0 * (E1/E0)^a * expm1(a * ln(E2/E1)) / a. The difference of powers
+        # cancels for a close to 0 and for narrow ranges, losing precision; the
+        # second form does not. E1 = 0, possible for gamma < 1, has no log
+        # ratio, so it keeps the difference of powers.
+        a = 1 - gamma
+        (E1, E2) = np.broadcast_arrays(np.asarray(E1, dtype=np.float64), np.asarray(E2, dtype=np.float64))
+        positive = E1 > 0
+        with np.errstate(divide='ignore', invalid='ignore'):
+            integral = np.where(
+                positive,
+                self._E0 * np.power(E1 / self._E0, a) * np.expm1(a * log_ratio(E1, E2)) / a,
+                np.power(self._E0, gamma) / a * (np.power(E2, a) - np.power(E1, a)),
+            )
 
         return integral
 

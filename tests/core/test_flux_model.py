@@ -1,3 +1,4 @@
+import decimal
 import unittest
 
 import numpy as np
@@ -11,6 +12,7 @@ from skyllh.core.config import (
 from skyllh.core.flux_model import (
     BoxTimeFluxProfile,
     CutoffPowerLawEnergyFluxProfile,
+    FunctionEnergyFluxProfile,
     LogParabolaPowerLawEnergyFluxProfile,
     PointSpatialFluxProfile,
     PowerLawEnergyFluxProfile,
@@ -118,6 +120,45 @@ class PowerLawEnergyFluxProfileTestCase(
         values = np.power(E / self.E0, -self.gamma)
 
         self.assertEqual(self.fluxprofile(E=E, unit=self.energy_unit), values)
+
+    def test_get_integral(self):
+        # Reference: the closed form E0^gamma / (1 - gamma) * (E2^(1-gamma) - E1^(1-gamma)),
+        # or E0 * ln(E2 / E1) for gamma = 1, evaluated with 50-digit decimals.
+        decimal.getcontext().prec = 50
+
+        def reference(gamma, E1, E2):
+            E0, E1, E2 = decimal.Decimal(self.E0), decimal.Decimal(E1), decimal.Decimal(E2)
+            if gamma == 1:
+                return float(E0 * (E2 / E1).ln())
+            a = 1 - decimal.Decimal(gamma)
+            return float(E0 ** (1 - a) / a * (E2**a - E1**a))
+
+        for gamma in (-1.5, 0.5, 1.0 - 1e-12, 1.0, 1.0 + 1e-8, 1.0 + 1e-12, 2.0, 3.5):
+            for E1, E2 in ((10.0, 10.0**3.2), (1e3, 1e3 * (1 + 1e-9)), (1e-3, 1e9)):
+                with self.subTest(gamma=gamma, E1=E1, E2=E2):
+                    self.fluxprofile.gamma = gamma
+                    np.testing.assert_allclose(
+                        self.fluxprofile.get_integral(E1, E2), reference(gamma, E1, E2), rtol=1e-12
+                    )
+
+    def test_get_integral_from_zero(self):
+        # For gamma < 1 the integral from E1 = 0 is finite.
+        self.fluxprofile.gamma = 0.5
+        np.testing.assert_allclose(
+            self.fluxprofile.get_integral(0.0, 4.0), np.sqrt(self.E0) / 0.5 * np.sqrt(4.0), rtol=1e-14
+        )
+
+
+class FunctionEnergyFluxProfileTestCase(
+    unittest.TestCase,
+):
+    def test_get_integral(self):
+        # FunctionEnergyFluxProfile uses the numerical default get_integral.
+        fluxprofile = FunctionEnergyFluxProfile(function=lambda E: E**-2.0, energy_unit=units.GeV, cfg=Config())
+
+        integral = fluxprofile.get_integral(np.array([1.0, 2.0]), np.array([10.0, 4.0]))
+
+        np.testing.assert_allclose(integral, [1 - 1 / 10, 1 / 2 - 1 / 4], rtol=1e-12)
 
 
 class CutoffPowerLawEnergyFluxProfileTestCase(
